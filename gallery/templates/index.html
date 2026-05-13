@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Optimization Runs Gallery</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Gallery</h1>
+    <nav>
+      <a href="/favorites">Hearts</a>
+      <a href="/stars">Stars</a>
+    </nav>
+  </header>
+  <section class="controls">
+    <form id="filter-form">
+      <label>Base Directory:
+        <select name="subdir" id="subdir-select">
+          <option value="">Loading subdirectories...</option>
+        </select>
+      </label>
+      <label>Scene:
+        <select name="scene" id="scene-select" required disabled>
+          <option value="" disabled selected>Select a directory first</option>
+        </select>
+      </label>
+      <label>Target Prompt:
+        <select name="target_prompt" id="prompt-select" required disabled>
+          <option value="" disabled selected>Select a scene first</option>
+        </select>
+      </label>
+      <label>Loss Model:
+        <select name="loss_model" id="loss-model-select" required disabled>
+          <option value="" disabled selected>Select a scene first</option>
+        </select>
+      </label>
+      <label>Reference Image:
+        <select name="reference_image" id="ref-image-select" disabled>
+          <option value="" disabled selected>Select a scene first</option>
+        </select>
+      </label>
+      <label style="margin-left:12px;">
+        <input type="checkbox" id="include-first-iter" />
+        Show first-iteration images
+      </label>
+      <label style="margin-left:12px;">
+        <input type="checkbox" id="group-by-iteration" />
+        Group by iteration and batch item
+      </label>
+      <button type="submit" id="load-btn" disabled>Load</button>
+    </form>
+  </section>
+  <p id="status"></p>
+  <section id="grid" class="image-grid"></section>
+
+  <template id="image-card-template">
+    <div class="img-card" tabindex="0">
+      <div class="heart-toggle" title="Toggle Heart">♡</div>
+      <div class="star-toggle" title="Toggle Star">☆</div>
+      <a class="meta-json" title="View full JSON metadata" target="_blank" rel="noopener">JSON</a>
+      <img />
+    </div>
+  </template>
+
+  <div id="modal" class="modal" hidden>
+    <div class="modal-content">
+      <button class="close-btn" id="modal-close" aria-label="Close">✕</button>
+      <img id="modal-image" />
+      <div class="modal-meta">
+        <pre id="modal-caption"></pre>
+        <div class="modal-actions">
+          <button id="modal-heart-btn" class="heart-btn" title="Toggle Heart">♡</button>
+          <button id="modal-star-btn" class="star-btn" title="Toggle Star">☆</button>
+          <button id="copy-path-btn">Copy Image Path</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tooltip" class="tooltip" hidden></div>
+
+  <script src="/static/shared.js"></script>
+  <script src="/static/gallery.js"></script>
+</body>
+</html>

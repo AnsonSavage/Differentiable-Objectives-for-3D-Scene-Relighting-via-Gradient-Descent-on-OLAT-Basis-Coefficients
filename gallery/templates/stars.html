@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stars - Optimization Runs Gallery</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Stars</h1>
+    <nav>
+      <a href="/">Gallery</a>
+      <a href="/favorites">Hearts</a>
+    </nav>
+  </header>
+  <section id="stars-grid" class="image-grid"></section>
+  <p id="status"></p>
+  <template id="image-card-template">
+    <div class="img-card" tabindex="0">
+      <div class="heart-toggle" title="Toggle Heart">♡</div>
+      <div class="star-toggle" title="Toggle Star">★</div>
+      <a class="meta-json" title="View full JSON metadata" target="_blank" rel="noopener">JSON</a>
+      <img />
+    </div>
+  </template>
+  <div id="modal" class="modal" hidden>
+    <div class="modal-content">
+      <button class="close-btn" id="modal-close" aria-label="Close">✕</button>
+      <img id="modal-image" />
+      <div class="modal-meta">
+        <pre id="modal-caption"></pre>
+        <div class="modal-actions">
+          <button id="modal-heart-btn" class="heart-btn" title="Toggle Heart">♡</button>
+          <button id="modal-star-btn" class="star-btn" title="Toggle Star">☆</button>
+          <button id="copy-path-btn">Copy Image Path</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="tooltip" class="tooltip" hidden></div>
+  <script src="/static/shared.js"></script>
+  <script src="/static/stars.js"></script>
+</body>
+</html>
