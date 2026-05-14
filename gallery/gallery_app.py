@@ -7,8 +7,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Set
 from flask import Flask, jsonify, send_file, request, render_template, abort
 
-# Import configuration
-from config import RUNS_DIR, FAVORITES_FILE, STARS_FILE, IMAGE_EXTENSIONS, get_runs_dir_relative_to_static, BASE_DIR
+import config as gallery_config
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 _lock = threading.Lock()
@@ -18,6 +17,25 @@ _scenes_cache: Set[str] | None = None
 _prompts_cache: Dict[str, Set[str]] = {}
 _loss_models_cache: Dict[str, Set[str]] = {}
 _reference_images_cache: Dict[str, Set[str]] = {}
+
+
+def _clear_gallery_caches() -> None:
+    global _scenes_cache, _prompts_cache, _loss_models_cache, _reference_images_cache
+    _scenes_cache = None
+    _prompts_cache = {}
+    _loss_models_cache = {}
+    _reference_images_cache = {}
+
+
+def _get_runs_dir() -> Path | None:
+    return gallery_config.get_runs_dir()
+
+
+def _require_runs_dir():
+    runs_dir = _get_runs_dir()
+    if runs_dir is None:
+        return None, (jsonify({"error": "Runs directory has not been configured"}), 503)
+    return runs_dir, None
 
 
 def load_json(path: Path) -> Dict[str, Any]:
@@ -33,10 +51,11 @@ def get_settings_path(run_dir: Path) -> Path:
 
 def get_all_runs(subdir: str | None = None) -> List[Path]:
     """Get all run directories, optionally filtered by subdirectory."""
-    if not RUNS_DIR.exists():
+    runs_dir = _get_runs_dir()
+    if runs_dir is None or not runs_dir.exists():
         return []
     
-    base_path = RUNS_DIR / subdir if subdir else RUNS_DIR
+    base_path = runs_dir / subdir if subdir else runs_dir
     if not base_path.exists():
         return []
     
@@ -45,9 +64,10 @@ def get_all_runs(subdir: str | None = None) -> List[Path]:
 
 def get_subdirectories() -> List[str]:
     """Get list of subdirectories within RUNS_DIR."""
-    if not RUNS_DIR.exists():
+    runs_dir = _get_runs_dir()
+    if runs_dir is None or not runs_dir.exists():
         return []
-    return sorted([p.name for p in RUNS_DIR.iterdir() if p.is_dir()])
+    return sorted([p.name for p in runs_dir.iterdir() if p.is_dir()])
 
 
 def extract_scene_from_run_dir(run_dir: Path) -> str:
@@ -170,6 +190,9 @@ def collect_images(
 ) -> List[Dict[str, Any]]:
     """Collect images for a scene, optionally filtered by prompt, loss model, reference image, and subdirectory."""
     images: List[Dict[str, Any]] = []
+    runs_dir = _get_runs_dir()
+    if runs_dir is None:
+        return images
     for run_dir in get_all_runs(subdir):
         if extract_scene_from_run_dir(run_dir) != scene:
             continue
@@ -195,7 +218,7 @@ def collect_images(
         run_images: List[Dict[str, Any]] = []
         for img_path in sorted(run_dir.glob("image_iter*_loss_*.png")):
             # Create path relative to RUNS_DIR for the /image/ route
-            relative_path = str(img_path.relative_to(RUNS_DIR))
+            relative_path = str(img_path.relative_to(runs_dir))
             iteration = _parse_iteration(img_path.name)
             opt_index = _parse_opt_index(img_path.name)
             run_images.append({
@@ -267,19 +290,19 @@ def _save_image_list(path: Path, data: Dict[str, Any]):
 
 def load_hearts() -> Dict[str, Any]:
     # favorites.json now stores the "hearts" list
-    return _load_image_list(FAVORITES_FILE)
+    return _load_image_list(gallery_config.FAVORITES_FILE)
 
 
 def save_hearts(hearts: Dict[str, Any]):
-    _save_image_list(FAVORITES_FILE, hearts)
+    _save_image_list(gallery_config.FAVORITES_FILE, hearts)
 
 
 def load_stars() -> Dict[str, Any]:
-    return _load_image_list(STARS_FILE)
+    return _load_image_list(gallery_config.STARS_FILE)
 
 
 def save_stars(stars: Dict[str, Any]):
-    _save_image_list(STARS_FILE, stars)
+    _save_image_list(gallery_config.STARS_FILE, stars)
 
 
 @app.route('/')
@@ -300,10 +323,35 @@ def stars_view():
 @app.route('/api/config')
 def api_config():
     """Provide frontend configuration, including the runs directory path."""
+    runs_dir = _get_runs_dir()
     return jsonify({
-        "runs_dir": get_runs_dir_relative_to_static(),
-        "runs_dir_name": RUNS_DIR.name,
-        "runs_dir_absolute": str(RUNS_DIR.absolute())  # Add absolute path for copy-to-clipboard
+        "configured": runs_dir is not None,
+        "runs_dir": gallery_config.get_runs_dir_relative_to_static(),
+        "runs_dir_name": runs_dir.name if runs_dir is not None else "",
+        "runs_dir_absolute": str(runs_dir.absolute()) if runs_dir is not None else "",
+        "runs_dir_input": gallery_config.get_saved_runs_dir_name() or "",
+    })
+
+
+@app.route('/api/config', methods=['POST'])
+def api_config_update():
+    body = request.get_json(force=True, silent=True) or {}
+    runs_dir_value = body.get('runs_dir')
+    if not isinstance(runs_dir_value, str) or not runs_dir_value.strip():
+        return jsonify({"error": "Missing runs_dir"}), 400
+
+    try:
+        resolved = gallery_config.set_runs_dir_name(runs_dir_value)
+    except (FileNotFoundError, NotADirectoryError, ValueError) as e:
+        return jsonify({"error": str(e)}), 400
+
+    _clear_gallery_caches()
+    return jsonify({
+        "configured": True,
+        "runs_dir": gallery_config.get_runs_dir_relative_to_static(),
+        "runs_dir_name": resolved.name,
+        "runs_dir_absolute": str(resolved.absolute()),
+        "runs_dir_input": runs_dir_value.strip(),
     })
 
 
@@ -324,6 +372,9 @@ def api_gallery():
     include_first = str(include_first_param).lower() in {'1','true','yes','on'}
     if not scene:
         return jsonify({"error": "Missing scene"}), 400
+    runs_dir, error = _require_runs_dir()
+    if error:
+        return error
     # Empty target_prompt means "all prompts"
     # Empty loss_model means "all loss models"
     # Empty reference_image means "all reference images"
@@ -380,6 +431,9 @@ def api_reference_images():
 
 @app.route('/api/metadata')
 def api_metadata():
+    runs_dir, error = _require_runs_dir()
+    if error:
+        return error
     image_id = request.args.get('id')  # format: run_dir/filename or subdir/run_dir/filename
     if not image_id or '/' not in image_id:
         return jsonify({"error": "Invalid id"}), 400
@@ -390,7 +444,7 @@ def api_metadata():
         return jsonify({"error": "Invalid id format"}), 400
     
     dir_path, fname = parts
-    run_dir = RUNS_DIR / dir_path
+    run_dir = runs_dir / dir_path
     
     if not run_dir.exists():
         return jsonify({"error": f"Run not found: {dir_path}"}), 404
@@ -426,10 +480,10 @@ def _safe_resolve_reference_image(path_str: str) -> Path:
         raise FileNotFoundError("Missing reference image path")
     candidate = Path(path_str).expanduser()
     if not candidate.is_absolute():
-        candidate = (BASE_DIR.parent / candidate)
+        candidate = (gallery_config.BASE_DIR.parent / candidate)
     resolved = candidate.resolve(strict=True)
 
-    repo_root = BASE_DIR.parent.resolve(strict=True)
+    repo_root = gallery_config.BASE_DIR.parent.resolve(strict=True)
     try:
         resolved.relative_to(repo_root)
     except Exception as e:
@@ -451,6 +505,9 @@ def api_reference_image():
     path_str = request.args.get('path')
     thumb_param = request.args.get('thumb', '0')
     thumb = str(thumb_param).lower() in {'1', 'true', 'yes', 'on'}
+    _, error = _require_runs_dir()
+    if error:
+        return error
 
     try:
         img_path = _safe_resolve_reference_image(path_str)
@@ -524,8 +581,11 @@ def api_favorites():
 @app.route('/image/<path:subpath>')
 def serve_image(subpath):
     # subpath should be relative path from RUNS_DIR
-    img_path = RUNS_DIR / subpath
-    if not img_path.exists() or img_path.suffix.lower() not in IMAGE_EXTENSIONS:
+    runs_dir = _get_runs_dir()
+    if runs_dir is None:
+        return jsonify({"error": "Runs directory has not been configured"}), 503
+    img_path = runs_dir / subpath
+    if not img_path.exists() or img_path.suffix.lower() not in gallery_config.IMAGE_EXTENSIONS:
         abort(404)
     return send_file(img_path)
 

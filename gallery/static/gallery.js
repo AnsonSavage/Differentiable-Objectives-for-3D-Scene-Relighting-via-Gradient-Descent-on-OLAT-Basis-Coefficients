@@ -19,11 +19,52 @@ const modalClose = document.getElementById('modal-close');
 const copyPathBtn = document.getElementById('copy-path-btn');
 const modalHeartBtn = document.getElementById('modal-heart-btn');
 const modalStarBtn = document.getElementById('modal-star-btn');
+const setupOverlay = document.getElementById('runs-dir-setup-overlay');
+const setupForm = document.getElementById('runs-dir-form');
+const runsDirInput = document.getElementById('runs-dir-input');
+const setupError = document.getElementById('runs-dir-error');
+const changeRunsDirBtn = document.getElementById('change-runs-dir-btn');
 
 // State
 let lastModalData = null;
 let hearts = new Set();
 let stars = new Set();
+
+function showRunsDirSetup(message = '') {
+  if(!setupOverlay) return;
+  if(setupError) setupError.textContent = message;
+  if(runsDirInput && CONFIG.runs_dir_input) {
+    runsDirInput.value = CONFIG.runs_dir_input;
+  }
+  setupOverlay.hidden = false;
+  runsDirInput?.focus();
+}
+
+function hideRunsDirSetup() {
+  if(!setupOverlay) return;
+  setupOverlay.hidden = true;
+  if(setupError) setupError.textContent = '';
+}
+
+function clearGalleryState() {
+  grid.innerHTML = '';
+  statusEl.textContent = '';
+  sceneSelect.innerHTML = '<option value="" disabled selected>Select a directory first</option>';
+  sceneSelect.disabled = true;
+  promptSelect.innerHTML = '<option value="" disabled selected>Select a scene first</option>';
+  promptSelect.disabled = true;
+  lossModelSelect.innerHTML = '<option value="" disabled selected>Select a scene first</option>';
+  lossModelSelect.disabled = true;
+  refImageSelect.innerHTML = '<option value="" disabled selected>Select a scene first</option>';
+  refImageSelect.disabled = true;
+  loadBtn.disabled = true;
+}
+
+async function initializeGallery() {
+  await loadHearts();
+  await loadStars();
+  await populateSubdirs();
+}
 
 function getIterationLabel(image) {
   return image.iteration >= 0 ? `Iter ${image.iteration}` : 'Iter ?';
@@ -447,14 +488,36 @@ setupModalHandlers(
 );
 
 // Initialize: load config, then favorites, then populate subdirectories
+setupForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const value = runsDirInput?.value.trim() || '';
+  if(!value) {
+    showRunsDirSetup('Enter a runs directory path.');
+    return;
+  }
+  try {
+    if(setupError) setupError.textContent = 'Saving...';
+    await saveConfig(value);
+    hideRunsDirSetup();
+    clearGalleryState();
+    await initializeGallery();
+  } catch(err) {
+    showRunsDirSetup(err.message);
+  }
+});
+
+changeRunsDirBtn?.addEventListener('click', () => {
+  showRunsDirSetup();
+});
+
 (async function init() {
   console.log('Gallery init starting...');
   await loadConfig();
   console.log('Config loaded:', CONFIG);
-  await loadHearts();
-  await loadStars();
-  console.log('Hearts loaded:', hearts.size, 'items');
-  console.log('Stars loaded:', stars.size, 'items');
-  await populateSubdirs();
-  console.log('Subdirs populated');
+  if(!CONFIG.configured) {
+    showRunsDirSetup('Choose a runs directory to continue.');
+    return;
+  }
+  await initializeGallery();
+  console.log('Gallery initialized');
 })();

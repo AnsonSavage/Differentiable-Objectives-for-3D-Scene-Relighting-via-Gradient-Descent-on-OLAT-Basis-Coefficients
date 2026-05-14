@@ -9,6 +9,7 @@
   <header>
     <h1>Gallery</h1>
     <nav>
+      <button type="button" id="change-runs-dir-btn">Change runs directory</button>
       <a href="/favorites">Hearts</a>
       <a href="/stars">Stars</a>
     </nav>
@@ -79,6 +80,21 @@
   </div>
 
   <div id="tooltip" class="tooltip" hidden></div>
+
+  <div id="runs-dir-setup-overlay" class="startup-overlay" hidden>
+    <div class="startup-card">
+      <h2>Choose the runs directory</h2>
+      <p>Enter the absolute path to the runs folder, or a path relative to the repository root.</p>
+      <form id="runs-dir-form">
+        <label for="runs-dir-input">Runs directory</label>
+        <input id="runs-dir-input" name="runs_dir" type="text" autocomplete="off" spellcheck="false" placeholder="/path/to/runs" />
+        <div class="startup-actions">
+          <button type="submit">Save and continue</button>
+        </div>
+      </form>
+      <p id="runs-dir-error" class="startup-error" aria-live="polite"></p>
+    </div>
+  </div>
 
   <script src="/static/shared.js"></script>
   <script src="/static/gallery.js"></script>

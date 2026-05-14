@@ -3,11 +3,10 @@
  */
 
 // Configuration loaded from backend
-// TODO: PATH_UPDATE gallery runs directory
-let CONFIG = { runs_dir: '' };
+let CONFIG = { runs_dir: '', runs_dir_name: '', runs_dir_absolute: '', runs_dir_input: '', configured: false };
 
-async function fetchJSON(url) { 
-  const r = await fetch(url); 
+async function fetchJSON(url, options = {}) { 
+  const r = await fetch(url, options); 
   if(!r.ok) {
     let errorMsg;
     try {
@@ -27,6 +26,16 @@ async function loadConfig() {
   } catch(e) { 
     console.warn('Config load failed, using defaults', e); 
   }
+}
+
+async function saveConfig(runsDir) {
+  const data = await fetchJSON('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ runs_dir: runsDir }),
+  });
+  CONFIG = data;
+  return CONFIG;
 }
 
 function updateToggle(el, isActive, onChar, offChar, activeClass) {

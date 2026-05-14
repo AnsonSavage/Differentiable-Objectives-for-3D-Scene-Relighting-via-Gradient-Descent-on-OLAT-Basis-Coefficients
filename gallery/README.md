@@ -10,7 +10,7 @@ A lightweight Flask web app to browse optimization run images filtered by scene 
 - **Modal View**: Click to enlarge images with full metadata and copyable filesystem paths
 - **Hearts**: Heart/unheart images to curate a “pretty” collection (persisted in `favorites.json`)
 - **Stars**: Star/unstar images to curate a “matches prompt/image well” collection (persisted in `stars.json`)
-- **Configurable**: Point to different optimization runs directories via environment variable
+- **Configurable**: Choose the optimization runs directory at startup and keep it persisted between sessions
 - **Clean Architecture**: Shared JavaScript utilities, centralized configuration, no code duplication
 
 ## Quick Start
@@ -19,11 +19,8 @@ A lightweight Flask web app to browse optimization run images filtered by scene 
 # Install dependencies (Flask required)
 pip install -r requirements.txt
 
-# Run the gallery (requires GALLERY_RUNS_DIR)
+# Run the gallery
 python gallery_app.py
-
-# Or specify a custom runs directory
-GALLERY_RUNS_DIR="" python gallery_app.py  # TODO: PATH_UPDATE gallery runs directory
 ```
 
 Then open: **http://localhost:5000**
@@ -39,35 +36,18 @@ Then open: **http://localhost:5000**
 
 ## Configuration
 
-### Environment Variable (Recommended)
+### Startup Directory Selection
 
-Change the runs directory without modifying code:
+When the gallery starts, it prompts for the runs directory if one has not been saved yet.
 
-```bash
-# Relative path (from parent of gallery folder)
-export GALLERY_RUNS_DIR="my_custom_runs"
-python gallery_app.py
-
-# Absolute path
-export GALLERY_RUNS_DIR=""  # TODO: PATH_UPDATE gallery runs directory
-python gallery_app.py
-
-# Inline
-GALLERY_RUNS_DIR="alternative_runs" python gallery_app.py
-```
-
-### Direct Config Edit
-
-Edit `config.py` to set the default:
-
-```python
-RUNS_DIR_NAME = os.environ.get("GALLERY_RUNS_DIR", "")  # TODO: PATH_UPDATE gallery runs directory
-```
+- Enter an absolute path, or a path relative to the repository root
+- The selection is saved in `gallery/gallery_settings.json`
+- The same directory is reused on the next launch until you change it from the Gallery page
 
 ### How It Works
 
 - All paths centralized in `config.py`
-- Backend serves config via `/api/config` endpoint
+- Backend serves config via `/api/config` endpoint and persists the chosen runs directory
 - Frontend dynamically loads paths from backend
 - Works with both relative and absolute paths
 
