@@ -1,0 +1,148 @@
+from pathlib import Path
+
+from utils.scene import MultiLayerEXRScene, OLATDirScene
+
+
+BASE_DIR = Path(__file__).resolve().parent
+LOCAL_EXAMPLE_OLATS_DIR = BASE_DIR / "example_olats"
+HF_BUCKET_ID = "AnsonSavage/DemoOLATScenes"
+PREFIX = "example_olats"  # Currently, there is only one folder, but this is to be resilient in case more are added in the future
+
+class OlatCacheManager:
+    _download_attempted = False
+
+    @staticmethod
+    def _has_any_files(directory: Path) -> bool:
+        return directory.exists() and any(directory.iterdir())
+
+
+    @staticmethod
+    def _download_example_olats_from_hf() -> None:
+        if OlatCacheManager._download_attempted or OlatCacheManager._has_any_files(LOCAL_EXAMPLE_OLATS_DIR):
+            return
+        OlatCacheManager._download_attempted = True
+
+        
+        from huggingface_hub import list_bucket_tree, download_bucket_files
+
+        file_pairs = []
+        items = list_bucket_tree(HF_BUCKET_ID, prefix=PREFIX)
+        for item in items:
+            if item.type == "file":
+                remote_path = item.path
+                local_path = BASE_DIR / remote_path  # All the files we're getting are already prefixed with "example_olats/"
+                file_pairs.append((remote_path, local_path))
+
+        download_bucket_files(HF_BUCKET_ID, files=file_pairs)
+
+
+    @staticmethod
+    def _ensure_example_olats_available() -> None:
+        if OlatCacheManager._has_any_files(LOCAL_EXAMPLE_OLATS_DIR):
+            return
+        try:
+            OlatCacheManager._download_example_olats_from_hf()
+        except (ImportError, FileNotFoundError):
+            raise FileNotFoundError(
+                "Could not find example_olats locally and failed to download them from Hugging Face."
+            )
+
+def _scene_config_dir(scene_kind: str, scene_name: str, configuration: str = "standard") -> str:
+    OlatCacheManager._ensure_example_olats_available()
+    return str(LOCAL_EXAMPLE_OLATS_DIR / scene_kind / scene_name / configuration)
+
+def _scene_multilayer_file(scene_name: str, configuration: str, filename: str) -> str:
+    OlatCacheManager._ensure_example_olats_available()
+    return str(LOCAL_EXAMPLE_OLATS_DIR / "multilayer" / scene_name / configuration / filename)
+
+
+class SpringScene(MultiLayerEXRScene):
+    def __init__(self, device: str = "cuda"):
+        path_to_exr = _scene_multilayer_file("spring", "standard", "spring_all_lights.exr")
+        super().__init__("spring", "A girl and dog running in the mountains", path_to_exr, device=device)
+
+
+class SciFiRobotScene(OLATDirScene):
+    def __init__(self, include_alpha_mask: bool = False, device: str = "cuda"):
+        path_to_olat_dir = _scene_config_dir("per_light", "scifi_armor", "cube_sphere_with_base_lighting")
+        super().__init__(
+            "scifiRobot",
+            "A sci-fi robot against a brick wall",
+            path_to_olat_dir,
+            "base_lighting.exr",
+            include_alpha_mask=include_alpha_mask,
+            device=device,
+        )
+
+
+class BlenderManScene(OLATDirScene):
+    def __init__(self, device: str = "cuda"):
+        path_to_olat_dir = _scene_config_dir("per_light", "blenderman", "cube_sphere_with_base_lighting")
+        super().__init__("blenderman", "A man in a robot suit", path_to_olat_dir, "base_lighting.exr", device=device)
+
+
+class CarScene(OLATDirScene):
+    def __init__(self, device: str = "cuda"):
+        path_to_olat_dir = _scene_config_dir("per_light", "rendered_lights_car", "dome_area_lights")
+        super().__init__("car", "a Volkswagen beetle car", path_to_olat_dir, device=device)
+
+
+class RedCarScene(OLATDirScene):
+    def __init__(self, include_alpha_mask: bool = False, device: str = "cuda"):
+        path_to_olat_dir = _scene_config_dir("per_light", "red_car")
+        super().__init__("redCar", "a red sports car", path_to_olat_dir, include_alpha_mask=include_alpha_mask, device=device)
+
+
+class CandleScene(OLATDirScene):
+    def __init__(self, include_alpha_mask: bool = False, device: str = "cuda"):
+        path_to_olat_dir = _scene_config_dir("per_light", "candle")
+        super().__init__("candle", "a candle on a table", path_to_olat_dir, include_alpha_mask=include_alpha_mask, device=device)
+
+
+class HouseScene(OLATDirScene):
+    def __init__(self, device: str = "cuda"):
+        path_to_olat_dir = _scene_config_dir("per_light", "house")
+        super().__init__("house", "an interior of a living room", path_to_olat_dir, device=device)
+
+
+class DinoScene(OLATDirScene):
+    def __init__(self, device: str = "cuda"):
+        path_to_olat_dir = _scene_config_dir("per_light", "dino")
+        super().__init__("dino", "a dinosaur in the woods", path_to_olat_dir, device=device)
+
+
+class FlowerPotScene(OLATDirScene):
+    def __init__(self, device: str = "cuda"):
+        path_to_olat_dir = _scene_config_dir("per_light", "flower_pot")
+        super().__init__("flowerPot", "a flower pot on the street", path_to_olat_dir, device=device)
+
+
+class CarStudioScene(OLATDirScene):
+    def __init__(self, configuration: str = "dome_lights", device: str = "cuda"):
+        assert configuration in ("dome_lights", "four_small_area_lights", "single_sun_light"), "Invalid configuration for CarStudioScene"
+        path_to_olat_dir = _scene_config_dir("per_light", "car_studio", configuration)
+        super().__init__("carStudio", "a car in a studio setup", path_to_olat_dir, "base_lighting.exr", device=device)
+
+
+class EinarScene(OLATDirScene):
+    def __init__(self, device: str = "cuda"):
+        path_to_olat_dir = _scene_config_dir("per_light", "einar")
+        super().__init__("einar", "an old man with a beard against a mountain background", path_to_olat_dir, device=device)
+
+
+class EinarSmallDomeScene(OLATDirScene):
+    def __init__(self, device: str = "cuda"):
+        path_to_olat_dir = _scene_config_dir("per_light", "einar_small_dome")
+        super().__init__("einarSmallDome", "an old man with a beard against a mountain background", path_to_olat_dir, device=device)
+
+
+class SpringPortraitScene(OLATDirScene):
+    def __init__(self, device: str = "cuda"):
+        path_to_exr = _scene_config_dir("per_light", "spring_portrait")
+        super().__init__("springPortrait", "A 3D stylized portrait of a girl", path_to_exr, device=device)
+
+
+class SpringPortraitSmallDomeScene(OLATDirScene):
+    def __init__(self, device: str = "cuda"):
+        path_to_exr = _scene_config_dir("per_light", "spring_portrait_small_dome")
+        super().__init__("springPortraitSmallDome", "A 3D stylized portrait of a girl lit by a set of planes configured in a smaller dome", path_to_exr, device=device)

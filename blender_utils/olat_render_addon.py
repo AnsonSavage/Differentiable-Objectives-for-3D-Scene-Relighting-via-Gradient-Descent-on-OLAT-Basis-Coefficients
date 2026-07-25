@@ -326,6 +326,8 @@ class OLAT_OT_Render(bpy.types.Operator):
             return {'CANCELLED'}
             
         os.makedirs(output_dir, exist_ok=True)
+        optimizable_output_dir = os.path.join(output_dir, "optimizable_lights")
+        os.makedirs(optimizable_output_dir, exist_ok=True)
         
         # Collect lights based on the detected flag AND enabled flag
         all_lights = [obj for obj in scene.objects if obj.olat_is_light and obj.olat_enabled]
@@ -392,7 +394,7 @@ class OLAT_OT_Render(bpy.types.Operator):
                 # Set output path
                 # Consistent prefix "olat_" and suffix is the light name
                 filename = f"olat_{safe_name}.exr"
-                scene.render.filepath = os.path.join(output_dir, filename)
+                scene.render.filepath = os.path.join(optimizable_output_dir, filename)
                 
                 # Store mapping
                 light_mapping[filename] = active_light.name
@@ -426,7 +428,7 @@ class OLAT_OT_Render(bpy.types.Operator):
                         light.hide_render = False
                 
                 # Set output path
-                filename = "non_optimized_lights.exr"
+                filename = "base_lighting.exr"
                 scene.render.filepath = os.path.join(output_dir, filename)
                 
                 # Render
@@ -524,7 +526,7 @@ class OLAT_PT_Panel(bpy.types.Panel):
         # Optimizable Checkbox
         # Only enabled if parent is optimizable AND this collection is enabled
         # (Though usually "Enabled" toggle controls visibility, "Optimizable" controls the property)
-        # User requirement: "if a collection is marked as non optimizable, then a subelement... shouldn't be able to be marked"
+        # If a collection is marked as non optimizable, then a subelement shouldn't be able to be marked
         
         opt_row = right_row.row()
         opt_row.prop(collection, "olat_optimizable", text="Optimizable")
@@ -634,7 +636,7 @@ def register():
     bpy.types.Scene.olat_output_dir = bpy.props.StringProperty(
         name="Output Directory",
         description="Directory to save rendered EXR files",
-        default="//rendered_lights",
+        default="//examples/example_olats",
         subtype='DIR_PATH',
         
     )

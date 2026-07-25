@@ -12,6 +12,7 @@ use (N, H, W, C).
 
 import os
 from typing import Optional, Protocol
+from pathlib import Path
 try:
     import OpenEXR  # type: ignore  # Lightweight EXR I/O
     import Imath  # type: ignore
@@ -191,12 +192,24 @@ def get_images_tensor_from_OLAT_dir(path_to_olat_dir, name_of_non_optimized_ligh
           multipliers back to filenames.
         - Channels are in linear space as provided by Mitsuba's Bitmap loader.
     """
-    file_pattern = os.path.join(path_to_olat_dir, file_pattern)
-    file_paths = glob.glob(file_pattern)
+    base_dir = Path(path_to_olat_dir)
+    optimized_dir = base_dir / "optimizable_lights"
+    if not optimized_dir.exists() or not optimized_dir.is_dir():
+        raise FileNotFoundError(f"Expected optimizable_lights directory at: {optimized_dir}")
+    file_paths = glob.glob(os.path.join(str(optimized_dir), file_pattern))
     images_list = []
     sorted_files = sorted(file_paths)
     index_of_non_optimized_lights_layer = -1
     exr_reader = select_exr_reader_implementation(backend)
+    non_optimized_lights_path: Optional[Path] = None
+    if name_of_non_optimized_lights_layer is not None:
+        non_optimized_candidates = [
+            base_dir / name_of_non_optimized_lights_layer,
+        ]
+        for candidate in non_optimized_candidates:
+            if candidate.exists():
+                non_optimized_lights_path = candidate
+                break
     for i, file_path in enumerate(sorted_files):
         # Check and see if the base name of the file path is the name of the non-optimized lights layer
         image_np: np.ndarray = exr_reader.read_rgb(file_path, numpy_precision=numpy_precision)
@@ -214,6 +227,9 @@ def get_images_tensor_from_OLAT_dir(path_to_olat_dir, name_of_non_optimized_ligh
         # Remove the non-optimized lights layer from the images list
         images_list.pop(index_of_non_optimized_lights_layer)
         sorted_files.pop(index_of_non_optimized_lights_layer)
+    elif non_optimized_lights_path is not None:
+        non_opt_np = exr_reader.read_rgb(str(non_optimized_lights_path), numpy_precision=numpy_precision)
+        non_optimized_lights_tensor = torch.from_numpy(non_opt_np).to(device=device, dtype=torch_precision)
     # Stack list of NumPy arrays before converting to Torch (avoids slow path & warning)
     assert len(images_list) > 0, "No images found in the specified directory with the given pattern."
     images_np = np.stack(images_list, axis=0)  # (N, H, W, C)

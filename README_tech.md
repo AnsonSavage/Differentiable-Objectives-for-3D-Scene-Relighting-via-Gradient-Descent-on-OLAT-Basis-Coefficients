@@ -22,12 +22,13 @@ Web-based gallery application for browsing and curating optimization results:
 - `static/` - CSS and JavaScript files for the gallery
 
 ### Root Directory
-- `scenes.py` - Scene definitions for different 3D models
+- `examples/example_scenes.py` - Scene definitions for different 3D models and asset loading helpers
 - `requirements.txt` - Python dependencies
 - `utils/` - Utility modules (losses, training, color conversion, etc.)
 - `blender_utils/` - Blender rendering utilities
 - `optimization_runs/` - Output directory for optimization results
-- `render/` - Rendered images
+- `examples/example_olats/` - Example OLAT assets
+- Example assets are downloaded automatically from Hugging Face if they are missing locally.
 
 ## Running the Gallery
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
+from pathlib import Path
 import torch
 from abc import ABC, abstractmethod
 from utils.load_utils import get_images_tensor_from_multi_layer_exr, get_images_tensor_from_OLAT_dir
@@ -92,6 +93,8 @@ class Scene(ABC):
         if display_individual_OLATs:
             print("\tIndividual optimizable images:")
             light_names = self.get_light_name_list()
+            if light_names is None:
+                raise ValueError("Scene did not provide light names for optimizable images")
             assert len(light_names) == images.shape[0], "Number of light names must match number of images"
             for i in range(images.shape[0]):
                 print(f"\t\tLight: {light_names[i]}")
@@ -133,13 +136,10 @@ class OLATDirScene(Scene):
         self._alpha_mask: Optional[torch.Tensor] = None
         if include_alpha_mask:
             try:
-                # Default to an 'alpha.exr' next to the OLAT directory unless an explicit path is provided
                 from utils.load_utils import load_alpha_tensor
-                mask_path = alpha_mask_path
-                if mask_path is None:
-                    import os as _os
-                    mask_path = _os.path.join(path_to_olat_dir, 'alpha.exr')
-                self._alpha_mask = load_alpha_tensor(mask_path, device=device)
+                mask_path = Path(alpha_mask_path) if alpha_mask_path is not None else Path(path_to_olat_dir) / 'alpha.exr'
+                if mask_path.exists():
+                    self._alpha_mask = load_alpha_tensor(str(mask_path), device=device)
             except Exception as e:
                 print(f"Warning: Failed to load alpha mask: {e}")
     
