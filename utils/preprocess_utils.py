@@ -2,21 +2,25 @@
 Utilities for preprocessing images for various vision models.
 """
 from __future__ import annotations
+
+from typing import Any, Optional
+
 import torch
-from PIL import Image
-from torchvision.transforms import Normalize, InterpolationMode
 import torchvision.transforms.functional as F
-from typing import Any, Dict, Optional, Tuple
+from PIL import Image
+from torchvision.transforms import InterpolationMode, Normalize
 
 _DEFAULT_IMAGE_PROCESSOR_MEAN = (0.48145466, 0.4578275, 0.40821073)
 _DEFAULT_IMAGE_PROCESSOR_STD = (0.26862954, 0.26130258, 0.27577711)
 
-def _extract_preprocess_meta(preprocess: Any) -> Dict[str, Any]:
+def _extract_preprocess_meta(preprocess: Any) -> dict[str, Any]:
     """Best-effort extraction of image_size and normalization from a preprocess pipeline.
 
     Supports common torchvision Compose pipelines returned by open_clip.create_transform.
+
+    Note that this was originally done to create a differentiable preprocessing pipeline when the original code only returned PIL images, not torch tensors.
     """
-    meta: Dict[str, Any] = {
+    meta: dict[str, Any] = {
         "image_size": None,  # int or (H, W)
         "mean": None,
         "std": None,
@@ -87,8 +91,9 @@ def preprocess_image_tensor(
     n_px: Optional[int] = None,
     *,
     preprocess: Any = None,
-    mean: Optional[Tuple[float, float, float]] = None,
-    std: Optional[Tuple[float, float, float]] = None,
+    mean: Optional[tuple[float, float, float]] = None,
+    std: Optional[tuple[float, float, float]] = None,
+    fallback_default_image_size = 224
 ) -> torch.Tensor:
     """Preprocess a tensor for image processors using either provided preprocess or defaults.
 
@@ -112,13 +117,13 @@ def preprocess_image_tensor(
 
     meta = _extract_preprocess_meta(preprocess) if preprocess is not None else {}
     # Resolve size to (H, W)
-    _size = n_px or meta.get("image_size") or 224
+    _size = n_px or meta.get("image_size") or fallback_default_image_size
     if isinstance(_size, int):
         target_h, target_w = _size, _size
     elif isinstance(_size, (tuple, list)) and len(_size) >= 2:
         target_h, target_w = int(_size[0]), int(_size[1])
     else:
-        target_h, target_w = 224, 224
+        target_h, target_w = fallback_default_image_size, fallback_default_image_size
     m = mean or meta.get("mean") or _DEFAULT_IMAGE_PROCESSOR_MEAN
     s = std or meta.get("std") or _DEFAULT_IMAGE_PROCESSOR_STD
     resize_mode = meta.get("resize_mode") or "shortest"

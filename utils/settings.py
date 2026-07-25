@@ -1,10 +1,11 @@
 """
-Helpers to build and update structured run settings.
+Helper for tracking what settings were used for a given result.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
 from datetime import datetime
+from typing import Any, Optional
+
 import torch
 import torchvision as tv
 
@@ -18,7 +19,7 @@ def build_settings(
     n_iterations: int,
     save_every: int,
     save_loss_plot_each_iteration: bool,
-    color_space_converter: Dict[str, Any],
+    color_space_converter: dict[str, Any],
     require_non_negative_multipliers: bool,
     torch_precision: torch.dtype,
     device: str,
@@ -29,7 +30,7 @@ def build_settings(
     hsv_callback: callable[[int], str] | None,
     learning_rate_scheduler_creator_callback: callable[[torch.optim.Optimizer], object] | None = None,
     criterion_type: str,
-    prompt_info: Optional[Dict[str, Any]] = None,
+    prompt_info: Optional[dict[str, Any]] = None,
     init_mean: float | tuple[float, float, float],
     init_std: float | tuple[float, float, float],
     scene_name: Optional[str] = None,
@@ -37,10 +38,10 @@ def build_settings(
     pretrained_source: str,
     patience: int | None = None,
     seed: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Assemble a structured initial settings dict.
     """
-    settings: Dict[str, Any] = {
+    settings: dict[str, Any] = {
         "prompts": prompt_info or {},
         "criterion": {
             "type": criterion_type,

@@ -4,9 +4,13 @@ Parameter strategies for handling RGB vs HSV parameter spaces during optimizatio
 This module implements the Strategy pattern to eliminate conditional logic
 for different parameter representations (RGB vs HSV).
 """
+
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
+
 import torch
+
 from utils.color.hsv_utils import hsv_to_rgb
 
 
@@ -36,12 +40,10 @@ class ParameterStrategy(ABC):
             device: Device to place tensors on
             learning_rate: Learning rate for optimizer
         """
-        pass
     
     @abstractmethod
     def zero_grad(self) -> None:
         """Zero gradients of all optimizers."""
-        pass
     
     @abstractmethod
     def update_parameter_constraints(self, epoch: int) -> None:
@@ -50,7 +52,6 @@ class ParameterStrategy(ABC):
         Args:
             epoch: Current training iteration
         """
-        pass
     
     @abstractmethod
     def get_multipliers(self) -> torch.Tensor:
@@ -59,17 +60,14 @@ class ParameterStrategy(ABC):
         Returns:
             Tensor of shape [n_results, num_lights, 3] in RGB space
         """
-        pass
     
     @abstractmethod
     def step(self) -> None:
         """Perform optimizer step."""
-        pass
     
     @abstractmethod
     def apply_physical_constraints(self) -> None:
-        """Apply physical plausibility constraints to parameters."""
-        pass
+        """Apply physical plausibility constraints (non-negativity in this case) to parameters."""
     
     def get_parameters_for_saving(self) -> torch.Tensor:
         """Get parameters in their native representation for saving.

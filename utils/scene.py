@@ -1,12 +1,21 @@
 from __future__ import annotations
 
-from typing import Optional
-from pathlib import Path
-import torch
 from abc import ABC, abstractmethod
-from utils.load_utils import get_images_tensor_from_multi_layer_exr, get_images_tensor_from_OLAT_dir
+from pathlib import Path
+from typing import Optional
+
+import torch
+
+from utils.color.linear_to_srgb_converters import (
+    LinearRec709ToAgXBase,
+    LinearRec709TosRGB,
+)
 from utils.display import display_tensor
-from utils.color.linear_to_srgb_converters import LinearRec709TosRGB, LinearRec709ToAgXBase
+from utils.load_utils import (
+    get_images_tensor_from_multi_layer_exr,
+    get_images_tensor_from_OLAT_dir,
+)
+
 
 class Scene(ABC):
     def __init__(self, name: str, description: str = "", device: str = 'cuda'):
@@ -22,7 +31,6 @@ class Scene(ABC):
             Tensor of shape (N, H, W, C) where N is number of images,
             H is height, W is width, and C is number of channels (3).
         """
-        pass
 
     @abstractmethod
     def get_light_name_list(self) -> Optional[list[str]]:
@@ -31,7 +39,6 @@ class Scene(ABC):
         Returns:
             List of light names or None if not applicable.
         """
-        pass
 
     def get_non_optimized_lights(self) -> Optional[torch.Tensor]:
         """Load and return a tensor of non-optimized lights to add to predictions.
@@ -82,7 +89,8 @@ class Scene(ABC):
         return total_image
 
     def display_scene(self, display_individual_OLATs=True, color_space_converter: LinearRec709TosRGB = LinearRec709ToAgXBase()) -> None:
-        # Display the optimizable images plus the non-optimized lights if available
+        ''' Display the optimizable images plus the non-optimized lights if available '''
+        
         images = self.get_optimizable_images()
         total_image = self.get_combined_image(color_space_converter)
         print("Displaying scene:", self.name)
@@ -132,6 +140,7 @@ class OLATDirScene(Scene):
         )
         if len(self.optimizable_images) < 1:
             raise ValueError(f"No optimizable images found in directory: {path_to_olat_dir}")
+
         # Optionally load an alpha mask for this scene
         self._alpha_mask: Optional[torch.Tensor] = None
         if include_alpha_mask:
