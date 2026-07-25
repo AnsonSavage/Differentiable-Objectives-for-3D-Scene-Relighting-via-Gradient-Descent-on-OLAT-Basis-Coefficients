@@ -2,13 +2,14 @@
 Training utilities for image optimization.
 """
 from __future__ import annotations
+from collections.abc import Callable
 import os
 import torch
 from torchvision.transforms import v2
 from tqdm import tqdm
 
 from utils.experiment import FolderManager, PlotManager, ResourceUsageTracker
-from utils.losses.base import UpdatableLoss
+from utils.losses.base import UpdatableLoss, BaseLoss
 from utils.settings import build_settings
 from utils.scene import Scene
 from utils.display import display_image_batch_grid
@@ -20,18 +21,18 @@ def train_with_criterion(
     scene: Scene,
     learning_rate: float,
     n_iterations: int,
-    criterion: torch.nn.Module,
+    criterion: BaseLoss | UpdatableLoss,
     starting_multiplier_std: float | tuple[float, float, float],
     output_subdirectory_name: str,
     n_results: int = 1,
     patience: int | None = None,
-    learning_rate_scheduler_creator_callback: callable[[torch.optim.Optimizer], torch.optim.lr_scheduler.LRScheduler] | None = None,
+    learning_rate_scheduler_creator_callback: Callable[[torch.optim.Optimizer], torch.optim.lr_scheduler.LRScheduler] | None = None,
     torch_precision=torch.float32,
     device='cuda',
     augmentation: v2.Transform | None = None,
-    augmentation_callback:callable[[int], v2.Transform] | None = None,
+    augmentation_callback: Callable[[int], v2.Transform] | None = None,
     parameters_stored_as_hsv: bool = False,
-    hsv_callback: callable[[int], str] | None = None,
+    hsv_callback: Callable[[int], str] | None = None,
     render_color_space_converter: LinearRec709TosRGB = LinearRec709ToAgXBase(),
     require_physically_plausible_multipliers: bool = True,
     loss_on_multipliers: torch.nn.Module | None = None,
@@ -55,7 +56,7 @@ def train_with_criterion(
         scene: Scene object providing images to optimize
         learning_rate: Learning rate for optimization
         n_iterations: Number of iterations to run
-        criterion: Loss function to minimize
+        criterion: BaseLoss | UpdatableLoss, Loss function to minimize
         starting_multiplier_std: Standard deviation for multiplier initialization
                                  (single float for RGB, tuple of 3 floats for HSV)
         starting_multiplier_mean: Mean for multiplier initialization
@@ -177,7 +178,7 @@ def train_with_criterion(
 
     # Early stopping bookkeeping
     best_loss = float("inf")
-    no_improve = 0
+    n_iterations_with_no_improvement = 0
 
     def _save_and_display(
         iteration: int,
@@ -294,9 +295,9 @@ def train_with_criterion(
         cur_loss_val = loss.item()
         if cur_loss_val < best_loss:
             best_loss = cur_loss_val
-            no_improve = 0
+            n_iterations_with_no_improvement = 0
         else:
-            no_improve += 1
+            n_iterations_with_no_improvement += 1
 
         # Save images and multipliers at regular intervals
         should_save = (epoch + 1) % save_every == 0 or epoch == 0 or (epoch + 1) == n_iterations
@@ -315,7 +316,7 @@ def train_with_criterion(
 
         # If patience is set and we've gone too many iterations without improvement,
         # do one last display/save and exit early.
-        if patience is not None and patience > 0 and no_improve >= patience:
+        if patience is not None and patience > 0 and n_iterations_with_no_improvement >= patience:
             if not should_save:
                 _save_and_display(
                     epoch + 1,

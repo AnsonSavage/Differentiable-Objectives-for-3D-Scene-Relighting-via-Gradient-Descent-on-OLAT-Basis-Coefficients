@@ -3,6 +3,7 @@ Helper for tracking what settings were used for a given result.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any, Optional
 
@@ -27,12 +28,13 @@ def build_settings(
     augmentation,
     augmentation_callback,
     parameters_stored_as_hsv: bool,
-    hsv_callback: callable[[int], str] | None,
-    learning_rate_scheduler_creator_callback: callable[[torch.optim.Optimizer], object] | None = None,
+    hsv_callback: Callable[[int], str] | None,
+    learning_rate_scheduler_creator_callback: Callable[[torch.optim.Optimizer], object] | None = None,
     criterion_type: str,
     prompt_info: Optional[dict[str, Any]] = None,
     init_mean: float | tuple[float, float, float],
     init_std: float | tuple[float, float, float],
+
     scene_name: Optional[str] = None,
     model_name: str,
     pretrained_source: str,
