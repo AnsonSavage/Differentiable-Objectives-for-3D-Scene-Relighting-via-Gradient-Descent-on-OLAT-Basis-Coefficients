@@ -12,7 +12,7 @@ def load_image_embedder(checkpoint_path, device, model_name='vit_b_32'):
     if FINE_TUNING_PATH not in sys.path:
         sys.path.insert(0, FINE_TUNING_PATH)
     
-    from utils.model.model_utils import create_model_and_tokenizer
+    from utils.model.model_utils import create_vision_only_model
     
     # Infer model configuration from checkpoint
     state_dict = torch.load(checkpoint_path, map_location='cpu')
@@ -34,12 +34,11 @@ def load_image_embedder(checkpoint_path, device, model_name='vit_b_32'):
             for _, shape in sorted_layers:
                 image_head_layers.append(shape[0])  # Output dim
     
-    # Create the model
-    model, _, preprocess = create_model_and_tokenizer(
+    # Create the vision-only model
+    model, preprocess = create_vision_only_model(
         model_name=model_name,
         device=device,
-        pretrained=None,
-        vision_only=True, # TODO: you would have to change this if you try to load up a fine-tuned CLIP-like model
+        pretrained=False,
         image_head_layers=image_head_layers,
     )
     

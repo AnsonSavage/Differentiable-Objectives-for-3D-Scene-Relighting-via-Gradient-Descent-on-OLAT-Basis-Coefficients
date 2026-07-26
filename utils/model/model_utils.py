@@ -5,7 +5,6 @@ from typing import Any
 
 import open_clip
 import torch
-from peft import get_peft_model
 from torchvision import transforms
 from torchvision.models import (
     ViT_B_16_Weights,
@@ -18,8 +17,173 @@ from torchvision.models import (
     vit_l_32,
 )
 
-# Path to pre-downloaded model weights
-MODEL_WEIGHTS_DIR = os.path.join(os.path.dirname(__file__), "checkpoints", "original_model_weights")
+# Local directory for cached fine-tuned weights
+MODEL_WEIGHTS_DIR = os.path.join(os.path.dirname(__file__), "weights")
+HF_FINE_TUNED_REPO = "AnsonSavage/FineTunedOpenCLIPModelsForRelightingLossEvaluation"
+
+
+def get_model_weights_path(filename_or_path: str) -> str:
+    """Get the path to a model weights file.
+
+    If the file exists locally (either as a direct path or inside MODEL_WEIGHTS_DIR),
+    returns it immediately. Otherwise, downloads it automatically from Hugging Face
+    (AnsonSavage/FineTunedOpenCLIPModelsForRelightingLossEvaluation) and caches it.
+    """
+    if os.path.exists(filename_or_path):
+        return filename_or_path
+
+    local_path = os.path.join(MODEL_WEIGHTS_DIR, filename_or_path)
+    if os.path.exists(local_path):
+        return local_path
+
+    print(f"Model weights '{filename_or_path}' not found locally. Downloading from Hugging Face ({HF_FINE_TUNED_REPO})...")
+    os.makedirs(MODEL_WEIGHTS_DIR, exist_ok=True)
+    from huggingface_hub import hf_hub_download
+
+    return hf_hub_download(
+        repo_id=HF_FINE_TUNED_REPO,
+        filename=filename_or_path,
+        local_dir=MODEL_WEIGHTS_DIR,
+    )
+def _infer_head_layers(state_dict: dict, prefix: str) -> list[int] | None:
+    """Infer MLP projection head layer dimensions from a saved state_dict."""
+    proj_keys = [k for k in state_dict if k.startswith(f"{prefix}.")]
+    if not proj_keys:
+        return None
+    layer_weights = {}
+    for k in proj_keys:
+        if "mlp." in k and "weight" in k:
+            parts = k.split(".")
+            layer_idx = int(parts[2])
+            layer_weights[layer_idx] = state_dict[k].shape
+
+    if layer_weights:
+        sorted_layers = sorted(layer_weights.items())
+        layers = [sorted_layers[0][1][1]]
+        for _, shape in sorted_layers:
+            layers.append(shape[0])
+        return layers
+    return None
+
+
+def create_vision_only_model(
+    model_name: str = "vit_b_16",
+    device: str = "cuda",
+    pretrained: bool = False,
+    image_head_layers: Sequence[int] | None = None,
+    projection_activation: type[torch.nn.Module] = torch.nn.ReLU,
+    fine_tune: str | None = None,
+) -> tuple[torch.nn.Module, Any]:
+    """Create a vision-only ViT model (no text encoder or tokenizer).
+
+    Args:
+        model_name: Architecture name from _VIT_REGISTRY (e.g., "vit_b_16").
+        device: PyTorch device.
+        pretrained: If True, load ImageNet pretrained weights.
+        image_head_layers: Optional projection head layer sizes (e.g., [768, 256, 64]).
+        projection_activation: Activation function for projection head.
+        fine_tune: Optional fine-tuned weights file.
+
+    Returns:
+        (model, preprocess_transform)
+    """
+    loading_time_start = time.time()
+    print(f"Loading vision-only model {model_name} (pretrained={pretrained})...")
+
+    if model_name not in _VIT_REGISTRY:
+        raise ValueError(f"Unknown model: {model_name}. Choose from {list(_VIT_REGISTRY.keys())}")
+
+    factory_fn, weights_enum, embed_dim, image_size = _VIT_REGISTRY[model_name]
+
+    if pretrained:
+        weights_path = os.path.join(MODEL_WEIGHTS_DIR, f"{model_name}_imagenet.pt")
+        if os.path.exists(weights_path):
+            print(f"Loading {model_name} weights from {weights_path}...")
+            vit = factory_fn(weights=None)
+            vit.load_state_dict(torch.load(weights_path, map_location="cpu"))
+        else:
+            print(f"Local weights not found at {weights_path}, downloading from PyTorch hub...")
+            vit = factory_fn(weights=weights_enum)
+        preprocess = weights_enum.transforms()
+    else:
+        vit = factory_fn(weights=None)
+        preprocess = transforms.Compose([
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+        ])
+
+    image_head = None
+    if image_head_layers:
+        if image_head_layers[0] != embed_dim:
+            image_head_layers = [embed_dim] + list(image_head_layers)
+        image_head = _ProjectionHead(image_head_layers, activation=projection_activation)
+
+    model = _VisionOnlyModel(vit, embed_dim, image_projection=image_head)
+    model.to(device)
+
+    if fine_tune is not None:
+        weights_path = get_model_weights_path(fine_tune)
+        state_dict = torch.load(weights_path, map_location=device)
+        model.load_state_dict(state_dict)
+
+    print(f"Vision-only model loaded in {time.time() - loading_time_start:.2f} seconds")
+    return model, preprocess
+
+
+def create_clip_model_and_tokenizer(
+    model_name: str = "ViT-B-16-SigLIP-512",
+    device: str = "cuda",
+    pretrained: str | None = "webli",
+    image_head_layers: Sequence[int] | None = None,
+    text_head_layers: Sequence[int] | None = None,
+    projection_activation: type[torch.nn.Module] = torch.nn.ReLU,
+    fine_tune: str | None = None,
+) -> tuple[torch.nn.Module, Any, Any]:
+    """Create a combined vision and text OpenCLIP model with tokenizer.
+
+    Args:
+        model_name: Architecture name (e.g., "ViT-B-16-SigLIP-512").
+        device: PyTorch device.
+        pretrained: OpenCLIP pretrained dataset name (e.g., "webli").
+        image_head_layers: Optional image projection head layer sizes (e.g., [768, 256, 64]).
+        text_head_layers: Optional text projection head layer sizes.
+        projection_activation: Activation function for projection heads.
+        fine_tune: Optional fine-tuned weights file (e.g., "siglip_blend-training-data_64-output-dim.pt").
+            If not found locally, automatically downloads it from Hugging Face.
+
+    Returns:
+        (model, tokenizer, preprocess_transform)
+    """
+    loading_time_start = time.time()
+    print(f"Loading base CLIP model {model_name}...")
+
+    model, _, preprocess = open_clip.create_model_and_transforms(model_name, pretrained=pretrained)
+    tokenizer = open_clip.get_tokenizer(model_name)
+
+    if fine_tune is not None:
+        weights_path = get_model_weights_path(fine_tune)
+        state_dict = torch.load(weights_path, map_location="cpu")
+
+        if image_head_layers is None:
+            image_head_layers = _infer_head_layers(state_dict, "image_projection")
+        if text_head_layers is None:
+            text_head_layers = _infer_head_layers(state_dict, "text_projection")
+
+    model.to(device)
+    model = _wrap_model_with_projection_heads(
+        model,
+        image_head_layers=image_head_layers,
+        text_head_layers=text_head_layers,
+        activation=projection_activation,
+    )
+
+    if fine_tune is not None:
+        print(f"Loading fine-tuned weights from {weights_path}...")
+        model.load_state_dict(state_dict)
+
+    model.to(device)
+    print(f"CLIP model loaded in {time.time() - loading_time_start:.2f} seconds")
+    return model, tokenizer, preprocess
 
 
 class _ProjectionHead(torch.nn.Module):
@@ -174,72 +338,3 @@ def _wrap_model_with_projection_heads(
     )
 
     return _CLIPWithProjectionHeads(model, image_projection=image_head, text_projection=text_head)
-
-
-def create_model_and_tokenizer(
-    model_name: str,
-    device,
-    pretrained: str | None = None,
-    vision_only: bool = False,
-    image_head_layers: Sequence[int] | None = None,
-    text_head_layers: Sequence[int] | None = None,
-    lora_config: Any | None = None,
-    projection_activation: type[torch.nn.Module] = torch.nn.ReLU,
-):
-    """Load a model, optional tokenizer, and preprocessing transforms.
-
-    Args:
-        model_name: Model architecture name.
-            - For OpenCLIP: e.g., "ViT-B-16-SigLIP-512"
-            - For vision-only: e.g., "vit_b_16", "vit_b_32", "vit_l_16", "vit_l_32"
-        device: Device to load the model on.
-        pretrained: Pretrained weights to load.
-            - For OpenCLIP: dataset name like "webli", "laion2b_s34b_b79k", etc.
-            - For vision-only: "imagenet" to use ImageNet weights, or None for random init.
-        vision_only: If True, use a PyTorch ViT (no text encoder).
-            Returns (VisionOnlyModel, None, preprocess).
-        image_head_layers: Optional projection head layer sizes (e.g., [768, 256, 64]).
-        text_head_layers: Optional text projection head (ignored for vision_only=True).
-        lora_config: Optional LoRA configuration (only for OpenCLIP models).
-        projection_activation: Activation function for projection heads.
-
-    Returns:
-        (model, tokenizer, preprocess) - tokenizer is None for vision_only=True
-    """
-    loading_time_start = time.time()
-
-    if vision_only:
-        use_pretrained = pretrained is not None and pretrained.lower() == "imagenet"
-        print(f"Loading vision-only model {model_name} (pretrained={use_pretrained})...")
-
-        model, preprocess = _create_vision_only_model(
-            model_name=model_name,
-            pretrained=use_pretrained,
-            image_head_layers=image_head_layers,
-            projection_activation=projection_activation,
-        )
-        model.to(device)
-
-        print(f"Model loaded in {time.time() - loading_time_start:.2f} seconds")
-        return model, None, preprocess
-
-    # OpenCLIP model path
-    print(f"Loading model {model_name}...")
-    model, _, preprocess = open_clip.create_model_and_transforms(model_name, pretrained=pretrained)
-
-    if lora_config is not None:
-        print("Applying LoRA configuration to model...")
-        model = get_peft_model(model, lora_config)  # type: ignore
-
-    tokenizer = open_clip.get_tokenizer(model_name)
-    model.to(device)
-    model = _wrap_model_with_projection_heads(
-        model,
-        image_head_layers=image_head_layers,
-        text_head_layers=text_head_layers,
-        activation=projection_activation,
-    )
-
-    model.to(device)
-    print(f"Model loaded in {time.time() - loading_time_start:.2f} seconds")
-    return model, tokenizer, preprocess

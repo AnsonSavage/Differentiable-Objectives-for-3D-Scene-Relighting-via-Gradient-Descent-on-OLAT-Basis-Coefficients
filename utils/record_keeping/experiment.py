@@ -12,26 +12,27 @@ from datetime import datetime, timezone
 import matplotlib.pyplot as plt
 import torch
 
+from utils.config import DEFAULT_OPTIMIZATION_RUNS_DIR
 from utils.record_keeping.config import to_serializable
 
 
 class FolderManager:
     """Manages experiment folders and file paths."""
 
-    def __init__(self, subdirectory=None, base_dir=""):
+    def __init__(self, subdirectory: str | None = None, base_dir: str | None = None):
         """Initialize folder manager.
-        
+
         Args:
-            base_dir: Base directory for all experiment runs
+            subdirectory: Subdirectory inside base_dir for specific experiment groups
+            base_dir: Base directory for all experiment runs. Defaults to DEFAULT_OPTIMIZATION_RUNS_DIR.
         """
-        # TODO: PATH_UPDATE experiment runs directory
         if not base_dir:
-            raise ValueError("base_dir must be set. TODO: PATH_UPDATE experiment runs directory")
+            base_dir = DEFAULT_OPTIMIZATION_RUNS_DIR
         self.base_dir = base_dir
         self.run_dir = ""
         if subdirectory:
             self.base_dir = os.path.join(base_dir, subdirectory)
-        
+
         # Create base directory if it doesn't exist
         os.makedirs(self.base_dir, exist_ok=True)
         # Set when the run directory is actually created.
