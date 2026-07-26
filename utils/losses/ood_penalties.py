@@ -1,11 +1,21 @@
-from diffusers import StableDiffusionPipeline, AutoencoderKL
+"""These losses are discussed in  section 5.2.1 of
+Differentiable Objectives for 3D Scene Relighting
+via Gradient Descent on OLAT Basis Coefficients
+(https://scholarsarchive.byu.edu/cgi/viewcontent.cgi?article=12256&context=etd)
+
+They were not found to be particularly effective at reducing OOD optima.
+"""
+
 import torch
 import torch.nn.functional as F
+from base import BaseLoss
+from diffusers import AutoencoderKL, StableDiffusionPipeline
 
-class DiffusionConfusionLoss():
+
+class DiffusionConfusionLoss(BaseLoss):
     def __init__(self, device, cache_dir=None):  # TODO: PATH_UPDATE diffusion model cache directory
         # Load the pipeline
-        model_id = "stabilityai/stable-diffusion-2-1-base" # TODO: probably use a newer model
+        model_id = "stabilityai/stable-diffusion-2-1-base" # TODO: use a newer model
         self.device = device
         if cache_dir is not None:
             self.pipe = StableDiffusionPipeline.from_pretrained(model_id, cache_dir=cache_dir, local_files_only=True).to(device)
@@ -33,7 +43,7 @@ class DiffusionConfusionLoss():
     def __call__(self, input_image: torch.Tensor):
         return self.forward(input_image)
 
-class VAEReconstructionLoss():
+class VAEReconstructionLoss(BaseLoss):
     def __init__(self, device, cache_dir=None):
         # Load the pre-trained VAE from Stable Diffusion 2.1
         if cache_dir is not None:
@@ -78,7 +88,7 @@ class VAEReconstructionLoss():
     def __call__(self, input_image: torch.Tensor):
         return self.get_reconstruction_loss(input_image)
 
-class AverageImageLuminanceLoss(torch.nn.Module):
+class AverageImageLuminanceLoss(BaseLoss):
     """Loss that penalizes the average luminance of an image being different from a goal average luminance."""
     def __init__(self, device, goal_average_luminance: float = 1.0):
         self.image_luminance_converter_tensor = torch.Tensor([0.2126, 0.7152, 0.0722]).view(3, 1, 1).to(device)
