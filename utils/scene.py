@@ -9,8 +9,8 @@ from utils.color.linear_to_srgb_converters import (
     LinearRec709ToAgXBase,
     LinearRec709TosRGB,
 )
-from utils.display import display_tensor
-from utils.load_utils import (
+from utils.image.display import display_tensor
+from utils.image.load_utils import (
     get_images_tensor_from_multi_layer_exr,
     get_images_tensor_from_OLAT_dir,
 )
@@ -144,7 +144,7 @@ class OLATDirScene(Scene):
         self._alpha_mask: torch.Tensor | None = None
         if include_alpha_mask:
             try:
-                from utils.load_utils import load_alpha_tensor
+                from utils.image.load_utils import load_alpha_tensor
                 mask_path = Path(alpha_mask_path) if alpha_mask_path is not None else Path(path_to_olat_dir) / 'alpha.exr'
                 if mask_path.exists():
                     self._alpha_mask = load_alpha_tensor(str(mask_path), device=device)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 from PIL import Image
 from utils.losses.base import BaseLoss
-from utils.preprocess_utils import preprocess_image_input
+from utils.image.preprocess_utils import preprocess_image_input
 
 class CLIPCosineSimilarity(BaseLoss):
     """Loss based on CLIP similarity between image and text."""

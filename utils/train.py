@@ -12,7 +12,7 @@ from utils.record_keeping.experiment import FolderManager, PlotManager, Resource
 from utils.losses.base import UpdatableLoss, BaseLoss
 from utils.record_keeping.settings import build_settings
 from utils.scene import Scene
-from utils.display import display_image_batch_grid
+from utils.image.display import display_image_batch_grid
 from utils.color.linear_to_srgb_converters import LinearRec709TosRGB, LinearRec709ToAgXBase
 from utils.seed import set_global_seed
 from utils.parameter_strategies import ParameterStrategy, RGBParameterStrategy, HSVParameterStrategy

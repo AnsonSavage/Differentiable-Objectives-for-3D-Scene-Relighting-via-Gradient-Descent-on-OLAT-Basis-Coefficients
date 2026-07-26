@@ -9,9 +9,9 @@ import torchvision.transforms.functional as F
 from utils.losses.base import BaseLoss
 from utils.losses.extractors import VGGIntermediate
 # Note: color space conversion (e.g., linear->sRGB) must be handled by the caller.
-from utils.image import resize_then_crop
+from utils.image.image import resize_then_crop
 from abc import ABC, abstractmethod
-from utils.preprocess_utils import preprocess_image_input
+from utils.image.preprocess_utils import preprocess_image_input
 from utils.losses.loss_utils import compute_cosine_distance, load_image_embedder, compute_embedding_similarity_loss, validate_embedding_similarity_mode
 
 class ImageImageLoss(BaseLoss, ABC):

@@ -6,7 +6,7 @@ import os
 import torch
 import torch.nn.functional as F
 from utils.losses.base import BaseLoss
-from utils.preprocess_utils import preprocess_image_tensor
+from utils.image.preprocess_utils import preprocess_image_tensor
 from utils.losses.loss_utils import load_image_embedder, compute_embedding_similarity_loss, validate_embedding_similarity_mode
 
 class FlowLoader(ABC):

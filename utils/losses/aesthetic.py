@@ -10,7 +10,7 @@ from urllib.request import urlretrieve
 from abc import abstractmethod
 
 from utils.losses.base import BaseLoss
-from utils.preprocess_utils import preprocess_image_tensor
+from utils.image.preprocess_utils import preprocess_image_tensor
 
 class BaseAestheticScorer:
     """Abstract scorer interface."""
