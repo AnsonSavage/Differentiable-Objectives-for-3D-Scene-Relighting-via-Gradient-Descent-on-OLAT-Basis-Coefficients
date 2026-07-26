@@ -10,18 +10,22 @@ Returned image tensors use channel-last layout (H, W, C) and stacks of lights
 use (N, H, W, C).
 """
 
+import glob
 import os
-from typing import Protocol
 from pathlib import Path
-try:
-    import OpenEXR  # type: ignore  # Lightweight EXR I/O
-    import Imath  # type: ignore
-except Exception:
-    OpenEXR = None
-    Imath = None
+from typing import Protocol
+
 import numpy as np
 import torch
-import glob
+
+try:
+    import Imath  # type: ignore
+    import OpenEXR  # type: ignore  # Lightweight EXR I/O
+except ImportError:
+    OpenEXR = None
+    Imath = None
+
+
 
 # Backend strategy interfaces and implementations
 class EXRReader(Protocol):
