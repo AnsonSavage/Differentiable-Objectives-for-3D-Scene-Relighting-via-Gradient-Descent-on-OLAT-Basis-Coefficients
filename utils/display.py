@@ -1,8 +1,8 @@
 import os
 import time
-import numpy as np
-import matplotlib as mpl
+
 import matplotlib.pyplot as plt
+
 
 def display_numpy_array(numpy_array, title=None, ax=None, show=True):
     """Display a HxWxC numpy array. If an Axes is provided, draw there; otherwise use plt.
@@ -71,12 +71,9 @@ def display_image_batch_grid(
     cols = int(min(max_cols, n_results)) if n_results > 0 else 1
     rows = int((n_results + cols - 1) // cols) if n_results > 0 else 1
 
-    fig, axes = plt.subplots(rows, cols, figsize=(4 * cols, 4 * rows))
-    # Normalize axes to a flat iterable
-    if isinstance(axes, mpl.axes.Axes):
-        axes = [axes]
-    else:
-        axes = np.array(axes).reshape(-1)
+    fig, axes = plt.subplots(rows, cols, figsize=(4 * cols, 4 * rows), squeeze=False)
+    # Flatten 2D numpy array of axes into a simple 1D list/array
+    axes = axes.flatten()
 
     for i in range(rows * cols):
         ax = axes[i]
@@ -118,12 +115,8 @@ def display_image_batch_grid(
                     out_path = save_path
 
             fig.savefig(out_path, bbox_inches="tight")
-        except Exception:
-            # Don't crash the caller if saving fails; print a short warning.
-            try:
-                print(f"Warning: failed to save display grid to {save_path}")
-            except Exception:
-                pass
+        except (OSError, ValueError) as e:
+            print(f"WARNING: failed to save display grid to {save_path}: {e}")
 
     if show:
         plt.show()
