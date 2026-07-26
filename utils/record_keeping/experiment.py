@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import matplotlib.pyplot as plt
 import torch
 
-from utils.config import to_serializable
+from utils.record_keeping.config import to_serializable
 
 
 class FolderManager:

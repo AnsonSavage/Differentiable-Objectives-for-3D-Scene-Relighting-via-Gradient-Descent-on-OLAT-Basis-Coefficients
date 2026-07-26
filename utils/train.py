@@ -8,9 +8,9 @@ import torch
 from torchvision.transforms import v2
 from tqdm import tqdm
 
-from utils.experiment import FolderManager, PlotManager, ResourceUsageTracker
+from utils.record_keeping.experiment import FolderManager, PlotManager, ResourceUsageTracker
 from utils.losses.base import UpdatableLoss, BaseLoss
-from utils.settings import build_settings
+from utils.record_keeping.settings import build_settings
 from utils.scene import Scene
 from utils.display import display_image_batch_grid
 from utils.color.linear_to_srgb_converters import LinearRec709TosRGB, LinearRec709ToAgXBase

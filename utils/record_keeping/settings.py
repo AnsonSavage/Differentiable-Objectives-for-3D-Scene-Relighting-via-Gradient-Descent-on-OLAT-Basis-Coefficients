@@ -10,7 +10,7 @@ from typing import Any
 import torch
 import torchvision as tv
 
-from utils.config import to_serializable
+from utils.record_keeping.config import to_serializable
 
 
 def build_settings(
