@@ -49,3 +49,24 @@ sbatch submit_prompt_experiment_array_mode.sh
 ```
 
 See `/gallery/README_GALLERY.md` for more details on the gallery features.
+
+
+## Scene Directory Structure
+
+The framework supports two types of scene data inputs:
+
+### 1. Per-Light EXR Directory (`OLATDirScene`)
+Per-light scenes must contain an `optimizable_lights/` subdirectory with individual `.exr` passes for each light to be optimized. Any non-optimizable background or base light pass (e.g., `base_lighting.exr`) must be placed directly in the root scene directory, **not** inside `optimizable_lights/`.
+
+```text
+my_scene/
+├── base_lighting.exr       (optional non-optimized light pass)
+├── alpha.exr               (optional alpha mask)
+└── optimizable_lights/     (directory containing ONLY optimizable light passes)
+    ├── light_pass_001.exr
+    ├── light_pass_002.exr
+    └── ...
+```
+
+### 2. Multi-Layer EXR File (`MultiLayerEXRScene`)
+Multi-layer EXR scenes store all light passes within a single `.exr` file, where per-light channels are grouped by a designated light keyword (default `'LGT'`).
