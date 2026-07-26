@@ -14,7 +14,6 @@ class AgXLook(ABC):
         Returns:
             Tensor of same shape, values in [0, 1]
         """
-        pass
 
 class AgXPunchyLook(AgXLook):
     """AgX punchy look implementation."""

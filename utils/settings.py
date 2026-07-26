@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import torch
 import torchvision as tv
@@ -31,11 +31,11 @@ def build_settings(
     hsv_callback: Callable[[int], str] | None,
     learning_rate_scheduler_creator_callback: Callable[[torch.optim.Optimizer], object] | None = None,
     criterion_type: str,
-    prompt_info: Optional[dict[str, Any]] = None,
+    prompt_info: dict[str, Any] | None = None,
     init_mean: float | tuple[float, float, float],
     init_std: float | tuple[float, float, float],
 
-    scene_name: Optional[str] = None,
+    scene_name: str | None = None,
     model_name: str,
     pretrained_source: str,
     patience: int | None = None,

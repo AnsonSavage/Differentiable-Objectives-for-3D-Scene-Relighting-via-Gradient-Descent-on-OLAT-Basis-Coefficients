@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
 
 import torch
 
@@ -33,14 +32,14 @@ class Scene(ABC):
         """
 
     @abstractmethod
-    def get_light_name_list(self) -> Optional[list[str]]:
+    def get_light_name_list(self) -> list[str] | None:
         """Get a list of light names corresponding to the optimizable images.
 
         Returns:
             List of light names or None if not applicable.
         """
 
-    def get_non_optimized_lights(self) -> Optional[torch.Tensor]:
+    def get_non_optimized_lights(self) -> torch.Tensor | None:
         """Load and return a tensor of non-optimized lights to add to predictions.
 
         Returns:
@@ -48,7 +47,7 @@ class Scene(ABC):
         """
         return None
 
-    def get_alpha_mask(self) -> Optional[torch.Tensor]:
+    def get_alpha_mask(self) -> torch.Tensor | None:
         """Load and return an alpha mask tensor if available.
 
         Returns:
@@ -127,9 +126,9 @@ class OLATDirScene(Scene):
         name: str,
         description: str,
         path_to_olat_dir: str,
-        name_of_non_optimized_lights_file: Optional[str] = None,
+        name_of_non_optimized_lights_file: str | None = None,
         include_alpha_mask: bool = False,
-        alpha_mask_path: Optional[str] = None,
+        alpha_mask_path: str | None = None,
         device: str = 'cuda',
     ):
         super().__init__(name, description, device=device)
@@ -142,7 +141,7 @@ class OLATDirScene(Scene):
             raise ValueError(f"No optimizable images found in directory: {path_to_olat_dir}")
 
         # Optionally load an alpha mask for this scene
-        self._alpha_mask: Optional[torch.Tensor] = None
+        self._alpha_mask: torch.Tensor | None = None
         if include_alpha_mask:
             try:
                 from utils.load_utils import load_alpha_tensor
@@ -155,13 +154,13 @@ class OLATDirScene(Scene):
     def get_optimizable_images(self) -> torch.Tensor:
         return self.optimizable_images
     
-    def get_light_name_list(self) -> Optional[list[str]]:
+    def get_light_name_list(self) -> list[str] | None:
         return self.light_name_list
 
-    def get_non_optimized_lights(self) -> Optional[torch.Tensor]:
+    def get_non_optimized_lights(self) -> torch.Tensor | None:
         return self.non_optimized_lights_tensor
 
-    def get_alpha_mask(self) -> Optional[torch.Tensor]:
+    def get_alpha_mask(self) -> torch.Tensor | None:
         return self._alpha_mask
 
 class MultiLayerEXRScene(Scene):
@@ -178,8 +177,8 @@ class MultiLayerEXRScene(Scene):
     def get_optimizable_images(self) -> torch.Tensor:
         return self.optimizable_images
     
-    def get_light_name_list(self) -> Optional[list[str]]:
+    def get_light_name_list(self) -> list[str] | None:
         return self.light_name_list
 
-    def get_non_optimized_lights(self) -> Optional[torch.Tensor]:
+    def get_non_optimized_lights(self) -> torch.Tensor | None:
         return self.non_optimized_lights_tensor

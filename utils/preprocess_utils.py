@@ -3,7 +3,7 @@ Utilities for preprocessing images for various vision models.
 """
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 import torch
 import torchvision.transforms.functional as F
@@ -88,12 +88,12 @@ def _extract_preprocess_meta(preprocess: Any) -> dict[str, Any]:
 
 def preprocess_image_tensor(
     tensor: torch.Tensor,
-    n_px: Optional[int] = None,
+    n_px: int | None = None,
     *,
     preprocess: Any = None,
-    mean: Optional[tuple[float, float, float]] = None,
-    std: Optional[tuple[float, float, float]] = None,
-    fallback_default_image_size = 224
+    mean: tuple[float, float, float] | None = None,
+    std: tuple[float, float, float] | None = None,
+    fallback_default_image_size: int = 224,
 ) -> torch.Tensor:
     """Preprocess a tensor for image processors using either provided preprocess or defaults.
 
@@ -177,7 +177,7 @@ def preprocess_image_input(
     image: torch.Tensor | Image.Image,
     *,
     preprocess: Any,
-    device: Optional[torch.device | str] = None,
+    device: torch.device | str | None = None,
 ) -> torch.Tensor:
     """Unified preprocessing for PIL or tensor input using a provided preprocess pipeline. This is important because most preprocess pipelines are designed for PIL images, but in our case we already have image Tensors and we need to be able to backprop through the preprocessing.
 

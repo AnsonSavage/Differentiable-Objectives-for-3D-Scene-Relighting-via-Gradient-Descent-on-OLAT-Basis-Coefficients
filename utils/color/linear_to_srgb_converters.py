@@ -21,7 +21,6 @@ class LinearRec709TosRGB(ABC):
         Returns:
             Tensor of same shape, values in [0, 1]
         """
-        raise NotImplementedError
 
     def __call__(self, linear_rec_709: torch.Tensor) -> torch.Tensor:
         """Enable calling the converter instance directly.

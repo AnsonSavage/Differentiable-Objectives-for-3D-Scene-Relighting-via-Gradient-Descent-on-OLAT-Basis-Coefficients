@@ -1,12 +1,14 @@
 import os
 from datetime import datetime
+
 import matplotlib.pyplot as plt
+import torch
 from diffusers import FluxKontextPipeline
-from utils.losses.image_image import ImageImageLoss
+
 from utils.display import display_image_batch_grid
 from utils.image import resize_then_crop
-import torch
-from typing import Type, Optional
+from utils.losses.image_image import ImageImageLoss
+
 
 class FLUXKontextRelighter():
     def __init__(self, cache_dir: str = "", device='cuda', seed: int | None = None):
@@ -116,7 +118,7 @@ class RelightImageCache():
         return self.cache[key]
 
 class FluxLoss(torch.nn.Module):
-    def __init__(self, cache: RelightImageCache, target_text: str, image_comparison_criterion_cls: Type[ImageImageLoss], num_relighted_images: int = 1, save_dir: str | None = None, display=False):
+    def __init__(self, cache: RelightImageCache, target_text: str, image_comparison_criterion_cls: type[ImageImageLoss], num_relighted_images: int = 1, save_dir: str | None = None, display=False):
         super(FluxLoss, self).__init__()
         # Defer relighting until we can link to the run directory
         self.images_cache = cache
@@ -130,8 +132,8 @@ class FluxLoss(torch.nn.Module):
         if not issubclass(image_comparison_criterion_cls, ImageImageLoss):
             raise TypeError("image_comparison_criterion_cls must be a subclass of ImageImageLoss")
 
-        self.image_comparison_criterion_type: Type[ImageImageLoss] = image_comparison_criterion_cls
-        self.image_comparison_criterion: Optional[ImageImageLoss] = None
+        self.image_comparison_criterion_type: type[ImageImageLoss] = image_comparison_criterion_cls
+        self.image_comparison_criterion: ImageImageLoss | None = None
 
         if save_dir is None and display: # As of right now, save_dir and display are mutually exclusive
             self._ensure_initialized()

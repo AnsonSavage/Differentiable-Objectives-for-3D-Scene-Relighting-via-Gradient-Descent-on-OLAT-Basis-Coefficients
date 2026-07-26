@@ -11,7 +11,7 @@ use (N, H, W, C).
 """
 
 import os
-from typing import Optional, Protocol
+from typing import Protocol
 from pathlib import Path
 try:
     import OpenEXR  # type: ignore  # Lightweight EXR I/O
@@ -49,7 +49,7 @@ class OpenEXRReader:
         pt = Imath.PixelType(Imath.PixelType.FLOAT)
         chs = header['channels'].keys()
 
-        def find_chan(name: str) -> Optional[str]:
+        def find_chan(name: str) -> str | None:
             if name in chs:
                 return name
             # layered naming like 'layer.R'
@@ -86,7 +86,7 @@ class OpenEXRReader:
         pt = Imath.PixelType(Imath.PixelType.FLOAT)
         chs = header['channels'].keys()
 
-        def find_alpha() -> Optional[str]:
+        def find_alpha() -> str | None:
             if 'A' in chs:
                 return 'A'
             for k in chs:
@@ -201,7 +201,7 @@ def get_images_tensor_from_OLAT_dir(path_to_olat_dir, name_of_non_optimized_ligh
     sorted_files = sorted(file_paths)
     index_of_non_optimized_lights_layer = -1
     exr_reader = select_exr_reader_implementation(backend)
-    non_optimized_lights_path: Optional[Path] = None
+    non_optimized_lights_path: Path | None = None
     if name_of_non_optimized_lights_layer is not None:
         non_optimized_candidates = [
             base_dir / name_of_non_optimized_lights_layer,
