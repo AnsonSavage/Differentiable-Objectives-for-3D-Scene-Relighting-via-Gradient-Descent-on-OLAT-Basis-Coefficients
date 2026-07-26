@@ -1,15 +1,19 @@
 """
 Experiment management utilities for tracking and visualizing optimization runs.
 """
+
 import json
 import os
-import matplotlib.pyplot as plt
-from datetime import datetime
-from utils.config import to_serializable
-import time
-import torch
-import shutil
 import re
+import shutil
+import time
+from datetime import datetime, timezone
+
+import matplotlib.pyplot as plt
+import torch
+
+from utils.config import to_serializable
+
 
 class FolderManager:
     """Manages experiment folders and file paths."""
@@ -24,7 +28,7 @@ class FolderManager:
         if not base_dir:
             raise ValueError("base_dir must be set. TODO: PATH_UPDATE experiment runs directory")
         self.base_dir = base_dir
-        self.run_dir = None
+        self.run_dir = ""
         if subdirectory:
             self.base_dir = os.path.join(base_dir, subdirectory)
         
@@ -35,7 +39,7 @@ class FolderManager:
 
     def _new_timestamp(self) -> str:
         # Microsecond precision to reduce collision probability between concurrent shards.
-        return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        return datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
     
     def create_run_folder(self, prefix="run"):
         """Create a uniquely named folder for this experiment run.
