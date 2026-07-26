@@ -1,5 +1,5 @@
 # Differentiable Objectives for 3D Scene Relighting via Gradient Descent on OLAT Basis Coefficients
-By the end of June 2026, this repository will contain the source code for the 2026 Eurographics Short Paper, _Differentiable Objectives for 3D Scene Relighting via Gradient Descent on OLAT Basis Coefficients_.
+By the end of July 2026, this repository will contain the source code for the 2026 Eurographics Short Paper, _Differentiable Objectives for 3D Scene Relighting via Gradient Descent on OLAT Basis Coefficients_.
 
 Please read the short paper [here](https://diglib.eg.org/handle/10.2312/egs20261021).
 
