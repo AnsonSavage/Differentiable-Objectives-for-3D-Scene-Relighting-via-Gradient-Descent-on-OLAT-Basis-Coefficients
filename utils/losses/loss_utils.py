@@ -12,7 +12,7 @@ def load_image_embedder(checkpoint_path, device, model_name='vit_b_32'):
     if FINE_TUNING_PATH not in sys.path:
         sys.path.insert(0, FINE_TUNING_PATH)
     
-    from model_utils import create_model_and_tokenizer
+    from utils.model.model_utils import create_model_and_tokenizer
     
     # Infer model configuration from checkpoint
     state_dict = torch.load(checkpoint_path, map_location='cpu')
