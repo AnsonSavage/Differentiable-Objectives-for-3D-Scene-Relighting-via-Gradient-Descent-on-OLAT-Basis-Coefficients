@@ -1,16 +1,17 @@
 """
-Aesthetic-based losses for image optimization.
+Aesthetic-based losses for image lighting optimization.
 """
 import os
-import torch
-import torch.nn as nn
-from PIL import Image
-from os.path import expanduser
-from urllib.request import urlretrieve
 from abc import abstractmethod
+from urllib.request import urlretrieve
 
-from utils.losses.base import BaseLoss
+import torch
+from PIL import Image
+from torch import nn
+
 from utils.image.preprocess_utils import preprocess_image_tensor
+from utils.losses.base import BaseLoss
+
 
 class BaseAestheticScorer:
     """Abstract scorer interface."""
