@@ -4,7 +4,7 @@ Composite loss for combining multiple loss functions with weights.
 from dataclasses import dataclass, field
 from typing import Callable, Any, cast
 
-from utils.losses.base import BaseLoss, UpdatableLoss
+from losses.base import BaseLoss, UpdatableLoss
 
 
 @dataclass

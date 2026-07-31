@@ -9,7 +9,7 @@ from torchvision.transforms import v2
 from tqdm import tqdm
 
 from utils.record_keeping.experiment import FolderManager, PlotManager, ResourceUsageTracker
-from utils.losses.base import UpdatableLoss, BaseLoss
+from losses.base import UpdatableLoss, BaseLoss
 from utils.record_keeping.settings import build_settings
 from utils.scene import Scene
 from utils.image.display import display_image_batch_grid

@@ -7,7 +7,7 @@ from diffusers import FluxKontextPipeline
 
 from utils.image.display import display_image_batch_grid
 from utils.image.image import resize_then_crop
-from utils.losses.image_image import ImageImageLoss
+from losses.image_image import ImageImageLoss
 
 
 class FLUXKontextRelighter():

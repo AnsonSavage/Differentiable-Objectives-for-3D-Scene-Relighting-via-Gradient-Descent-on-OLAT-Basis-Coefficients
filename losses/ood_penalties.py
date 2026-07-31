@@ -8,7 +8,7 @@ They were not found to be particularly effective at reducing OOD optima.
 
 import torch
 import torch.nn.functional as F
-from base import BaseLoss
+from losses.base import BaseLoss
 from diffusers import AutoencoderKL, StableDiffusionPipeline
 
 
