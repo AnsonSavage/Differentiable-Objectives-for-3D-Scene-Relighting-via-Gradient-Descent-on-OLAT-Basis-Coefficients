@@ -2,13 +2,15 @@
 Base classes for loss functions used in image optimization.
 """
 from abc import ABC, abstractmethod
-import torch.nn as nn
+
+from torch import nn
+
 
 class BaseLoss(nn.Module, ABC):
     """Base class for all loss functions."""
     
     def __init__(self):
-        super(BaseLoss, self).__init__()
+        super().__init__()
     
     @abstractmethod
     def forward(self, image):
