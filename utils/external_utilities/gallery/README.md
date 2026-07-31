@@ -41,7 +41,7 @@ Then open: **http://localhost:5000**
 When the gallery starts, it prompts for the runs directory if one has not been saved yet.
 
 - Enter an absolute path, or a path relative to the repository root
-- The selection is saved in `gallery/gallery_settings.json`
+- The selection is saved in `gallery_settings.json`
 - The same directory is reused on the next launch until you change it from the Gallery page
 
 ### How It Works

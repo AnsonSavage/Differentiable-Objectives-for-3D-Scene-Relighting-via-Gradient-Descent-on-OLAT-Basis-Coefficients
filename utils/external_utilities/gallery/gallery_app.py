@@ -480,10 +480,10 @@ def _safe_resolve_reference_image(path_str: str) -> Path:
         raise FileNotFoundError("Missing reference image path")
     candidate = Path(path_str).expanduser()
     if not candidate.is_absolute():
-        candidate = (gallery_config.BASE_DIR.parent / candidate)
+        candidate = (gallery_config.REPO_ROOT / candidate)
     resolved = candidate.resolve(strict=True)
 
-    repo_root = gallery_config.BASE_DIR.parent.resolve(strict=True)
+    repo_root = gallery_config.REPO_ROOT.resolve(strict=True)
     try:
         resolved.relative_to(repo_root)
     except Exception as e:

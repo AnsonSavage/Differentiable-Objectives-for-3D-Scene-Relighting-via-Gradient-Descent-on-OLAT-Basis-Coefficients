@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any
 
 # Base directory is the gallery folder
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BASE_DIR.parents[2]
 
 # Persist the selected runs directory so it survives between sessions.
 SETTINGS_FILE = BASE_DIR / "gallery_settings.json"
@@ -46,7 +47,7 @@ def _save_settings(settings: dict[str, Any]) -> None:
 def _resolve_runs_dir(value: str) -> Path:
     candidate = Path(value).expanduser()
     if not candidate.is_absolute():
-        candidate = BASE_DIR.parent / candidate
+        candidate = REPO_ROOT / candidate
     return candidate.resolve()
 
 
