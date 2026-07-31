@@ -1,11 +1,13 @@
 """Base classes related to Rec.709 to sRGB conversion."""
 from __future__ import annotations
 
-import torch
 from abc import ABC, abstractmethod
+
+import torch
+
 from utils.color.gamma_curves import linear_to_srgb
-from utils.color.tonemapping.agx_utils import applyAgXLogTorch, applyAgxLutTorch
 from utils.color.tonemapping.agx_looks import AgXLook
+from utils.color.tonemapping.agx_utils import applyAgXLogTorch, applyAgxLutTorch
 
 
 class LinearRec709TosRGB(ABC):
@@ -64,7 +66,7 @@ class SimpleGammaCurve(LinearRec709TosRGB):
 class LinearRec709ToAgXBase(LinearRec709TosRGB):
     """Linear Rec. 709 to sRGB conversion using AgX tonemapping."""
 
-    def __init__(self, look: AgXLook=None):
+    def __init__(self, look: AgXLook|None =None):
         """Initialize with a specific AgX look.
 
         Args:

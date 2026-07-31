@@ -4,6 +4,9 @@ from utils.color.tonemapping.agx_utils import applyLookPunchyTorch
 
 class AgXLook(ABC):
     """Abstract base class for AgX look modifications."""
+    def __call__(self, agx_base: torch.Tensor) -> torch.Tensor:
+        return self.apply(agx_base)
+    
     @abstractmethod
     def apply(self, array: torch.Tensor) -> torch.Tensor:
         """Apply the AgX look modification to the input tensor.
@@ -21,9 +24,6 @@ class AgXPunchyLook(AgXLook):
         self.punchy_gamma = punchy_gamma
         self.punchy_saturation = punchy_saturation
         self.preserve_range = preserve_range
-
-    def __call__(self, agx_base: torch.Tensor) -> torch.Tensor:
-        return self.apply(agx_base)
 
     def apply(self, agx_base: torch.Tensor) -> torch.Tensor:
         """Apply the AgX punchy look to the input tensor.
