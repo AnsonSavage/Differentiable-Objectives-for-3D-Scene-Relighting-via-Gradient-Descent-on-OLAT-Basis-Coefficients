@@ -1,5 +1,5 @@
 """
-CLIP-based loss functions for image optimization.
+CLIP-based loss functions for image relighting with text guidance.
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ class CLIPCosineSimilarity(BaseLoss):
     """Loss based on CLIP similarity between image and text."""
     
     def __init__(self, text: str, model, tokenizer, device, preprocess):
-        super(CLIPCosineSimilarity, self).__init__()
+        super().__init__()
         self.model = model
         self.text = text
         self.device = device
@@ -50,7 +50,7 @@ class CLIPDirectionalCosineSimilarity(BaseLoss):
     """
     def __init__(self, initial_text: str, target_text: str, initial_image: torch.Tensor, 
                  model, tokenizer, device, preprocess, always_prenormalize_vectors=False): # I'm not actually sure how much it matters if you normalize the vectors or not, because we only measure cosine similarity anyway. Oh wait, it actually does matter, because the difference vector will have a different direction depending on whether the inputs were normalized or not.
-        super(CLIPDirectionalCosineSimilarity, self).__init__()
+        super().__init__()
         self.model = model
         self.initial_text = initial_text
         self.target_text = target_text

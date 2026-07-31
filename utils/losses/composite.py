@@ -2,7 +2,7 @@
 Composite loss for combining multiple loss functions with weights.
 """
 from dataclasses import dataclass, field
-from typing import Callable, List, Any, cast
+from typing import Callable, Any, cast
 
 from utils.losses.base import BaseLoss, UpdatableLoss
 
@@ -28,15 +28,15 @@ class CompositeLoss(UpdatableLoss):
     Weight can be a float or a callable taking (current_step, total_steps) and returning a float.
     """
 
-    def __init__(self, weight_and_loss_functions: List[Any]):
+    def __init__(self, weight_and_loss_functions: list[Any]):
         """Initialize composite loss.
         
         Args:
-            weight_and_loss_functions: List of (weight, loss_function) tuples
+            weight_and_loss_functions: list of (weight, loss_function) tuples
         """
-        super(CompositeLoss, self).__init__()
+        super().__init__()
 
-        self.components: List[Component] = []
+        self.components: list[Component] = []
         for weight, loss_fn in weight_and_loss_functions:
             if callable(weight):
                 weight_fn = weight
