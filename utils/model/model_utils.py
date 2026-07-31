@@ -280,45 +280,6 @@ class _VisionOnlyModel(torch.nn.Module):
         raise NotImplementedError("VisionOnlyModel does not support text encoding.")
 
 
-def _create_vision_only_model(
-    model_name: str = "vit_b_16",
-    pretrained: bool = False,
-    image_head_layers: Sequence[int] | None = None,
-    projection_activation: type[torch.nn.Module] = torch.nn.ReLU,
-):
-    """Create a vision-only ViT model with optional projection head."""
-    if model_name not in _VIT_REGISTRY:
-        raise ValueError(f"Unknown model: {model_name}. Choose from {list(_VIT_REGISTRY.keys())}")
-
-    factory_fn, weights_enum, embed_dim, image_size = _VIT_REGISTRY[model_name]
-
-    if pretrained:
-        weights_path = os.path.join(MODEL_WEIGHTS_DIR, f"{model_name}_imagenet.pt")
-        if os.path.exists(weights_path):
-            print(f"Loading {model_name} weights from {weights_path}...")
-            vit = factory_fn(weights=None)
-            vit.load_state_dict(torch.load(weights_path, map_location='cpu'))
-        else:
-            print(f"Local weights not found at {weights_path}, downloading from PyTorch hub...")
-            vit = factory_fn(weights=weights_enum)
-        preprocess = weights_enum.transforms()
-    else:
-        vit = factory_fn(weights=None)
-        preprocess = transforms.Compose([
-            transforms.Resize((image_size, image_size)),
-            transforms.ToTensor(),
-        ])
-
-    image_head = None
-    if image_head_layers:
-        if image_head_layers[0] != embed_dim:
-            image_head_layers = [embed_dim] + list(image_head_layers)
-        image_head = _ProjectionHead(image_head_layers, activation=projection_activation)
-
-    model = _VisionOnlyModel(vit, embed_dim, image_projection=image_head)
-    return model, preprocess
-
-
 def _wrap_model_with_projection_heads(
     model: torch.nn.Module,
     image_head_layers: Sequence[int] | None = None,

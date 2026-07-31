@@ -288,12 +288,6 @@ class ImageEmbeddingSimilarityLoss(ImageImageLoss):
     def _load_image_embedder(self, checkpoint_path, device, model_name='vit_b_32'):
         """Load the image embedder model from checkpoint."""
         
-        # Add the fine_tuning codebase to the path for model loading utilities
-        # TODO: PATH_UPDATE fine-tuning codebase path
-        FINE_TUNING_PATH = ""
-        if FINE_TUNING_PATH not in sys.path:
-            sys.path.insert(0, FINE_TUNING_PATH)
-        
         from utils.model.model_utils import create_vision_only_model
         
         # Infer model configuration from checkpoint
