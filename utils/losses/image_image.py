@@ -1,21 +1,26 @@
 """
 Image-to-image losses for image optimization (MSE, SSIM, etc).
+
+Note that all color space conversions (e.g., linear->sRGB) must be handled by the caller.
 """
-from typing import Iterator
+import sys
+from abc import ABC, abstractmethod
+
 import torch
-import torch.nn as nn
-from PIL import Image
 import torchvision.transforms.functional as F
+from PIL import Image
+from torch import nn
+
+from utils.image.image import resize_then_crop
+from utils.image.preprocess_utils import preprocess_image_input
 from utils.losses.base import BaseLoss
 from utils.losses.extractors import VGGIntermediate
-# Note: color space conversion (e.g., linear->sRGB) must be handled by the caller.
-from utils.image.image import resize_then_crop
-from abc import ABC, abstractmethod
-from utils.image.preprocess_utils import preprocess_image_input
-from utils.losses.loss_utils import compute_cosine_distance, load_image_embedder, compute_embedding_similarity_loss, validate_embedding_similarity_mode
+from utils.losses.loss_utils import compute_cosine_distance
 
+
+# CLASSES
 class ImageImageLoss(BaseLoss, ABC):
-    def __init__(self, reference_image, comparison_height=None, comparison_width=None, device=torch.device('cuda')):
+    def __init__(self, reference_image, comparison_height=None, comparison_width=None, device='cuda'):
         """Initialize ImageImageLoss with reference image.
         
         Args:
@@ -23,6 +28,7 @@ class ImageImageLoss(BaseLoss, ABC):
             comparison_height, comparison_width: resize both images to this size for comparison. Uses the height and width from the reference image if not specified.
         """
         super().__init__()
+        device = torch.device(device)
         self.device = device
 
         # Convert PIL to tensor if needed
@@ -92,7 +98,7 @@ class ImageImageLoss(BaseLoss, ABC):
         incoming_image = self.preprocess(image)
         # Ensure same number of channels
         assert incoming_image.shape[1:] == self.processed_target_image.shape[1:], f"Image shape mismatch: Incoming image shape: {incoming_image.shape}, Target Image Shape: {self.processed_target_image.shape}"
-        if not incoming_image.shape[0] == self.processed_target_image.shape[0]:
+        if incoming_image.shape[0] != self.processed_target_image.shape[0]:
             self.processed_target_image = self.processed_target_image.expand(incoming_image.shape[0], -1, -1, -1) # TODO: NOTE: If you ever need to restore the target image to the original batch size, you'll have to do that at some point :)
         return self._loss_implementation(incoming_image)
     
@@ -114,7 +120,7 @@ class L1LossWithReferenceImage(ImageImageLoss):
 
 class SSIMLoss(ImageImageLoss):
     """SSIM Loss (Structural Similarity Index)."""
-    def __init__(self, reference_image, comparison_height=None, comparison_width=None, device=torch.device('cuda')):
+    def __init__(self, reference_image, comparison_height=None, comparison_width=None, device='cuda'):
         super().__init__(reference_image, comparison_height, comparison_width, device)
         from pytorch_msssim import SSIM
         self.ssim_metric = SSIM(data_range=1.0, size_average=False, channel=3)
@@ -129,7 +135,7 @@ class SSIMLoss(ImageImageLoss):
 
 class LPIPSLoss(ImageImageLoss):
     """LPIPS Loss (Learned Perceptual Image Patch Similarity)."""
-    def __init__(self, reference_image, comparison_height=None, comparison_width=None, device=torch.device('cuda'), backbone: str='vgg'):
+    def __init__(self, reference_image, comparison_height=None, comparison_width=None, device='cuda', backbone: str='vgg'):
         super().__init__(reference_image, comparison_height, comparison_width, device)
         from lpips import LPIPS
         self.lpips = LPIPS(net=backbone).to(device)
@@ -144,7 +150,7 @@ class LPIPSLoss(ImageImageLoss):
 
 class ImageImageCLIPLoss(ImageImageLoss):
     """Image-to-Image CLIP Loss."""
-    def __init__(self, reference_image, clip_model, preprocess, comparison_height=None, comparison_width=None, device=torch.device('cuda')):
+    def __init__(self, reference_image, clip_model, preprocess, comparison_height=None, comparison_width=None, device='cuda'):
         self.clip_preprocess = preprocess
         self.device=device
         super().__init__(reference_image, comparison_height, comparison_width, device) # Note that even though the comparison_height/width are provided, the preprocess will still resize the images to what is needed for the particular clip model.
@@ -163,7 +169,7 @@ class ImageImageCLIPLoss(ImageImageLoss):
         return preprocess_image_input(original, preprocess=self.clip_preprocess, device=self.device)
 
 class VGGStyleTransferLoss(ImageImageLoss):
-    def __init__(self, reference_image, requested_names=['conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1'], comparison_height=224, comparison_width=224, device=torch.device('cuda'), backbone='vgg16'): # TODO: it might be required to do comparison at 224x224 for VGG
+    def __init__(self, reference_image, requested_names=['conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1'], comparison_height=224, comparison_width=224, device='cuda', backbone='vgg16'): # TODO: it might be required to do comparison at 224x224 for VGG
         super().__init__(reference_image, comparison_height, comparison_width, device)
         self.backbone = backbone
         self.requested_indices = self._get_requested_indices(requested_names, backbone)
@@ -223,24 +229,89 @@ class VGGStyleTransferLoss(ImageImageLoss):
         return [vgg_names.index(name) for name in requested]
 
 class ImageEmbeddingSimilarityLoss(ImageImageLoss):
-    def __init__(self, reference_image, embedder_checkpoint, comparison_height=224, comparison_width=224, device=torch.device('cuda'), model_name='vit_b_32', mode='cosine'):
-        validate_embedding_similarity_mode(mode)
+    def __init__(self, reference_image, embedder_checkpoint, comparison_height=224, comparison_width=224, device='cuda', model_name='vit_b_32', mode='cosine'):
+        self._validate_embedding_similarity_mode(mode)
         self.mode = mode
 
         super().__init__(reference_image, comparison_height, comparison_width, device)
         self.embedder_checkpoint = embedder_checkpoint
         self.model_name = model_name
-        self.image_embedder, _ = load_image_embedder(embedder_checkpoint, device, model_name)
+        self.image_embedder, _ = self._load_image_embedder(embedder_checkpoint, device, model_name)
         with torch.no_grad():
-            self.processed_target_embedding = self.image_embedder.encode_image(self.processed_target_image)
+            self.processed_target_embedding = self.image_embedder.encode_image(self.processed_target_image) # type: ignore
             if self.mode == 'cosine': # Normalize the embedding so you don't have to do it each time
                 self.processed_target_embedding = self.processed_target_embedding / self.processed_target_embedding.norm(dim=1, keepdim=True)
+
+    def _load_image_embedder(self, checkpoint_path, device, model_name='vit_b_32'):
+        """Load the image embedder model from checkpoint."""
         
+        # Add the fine_tuning codebase to the path for model loading utilities
+        # TODO: PATH_UPDATE fine-tuning codebase path
+        FINE_TUNING_PATH = ""
+        if FINE_TUNING_PATH not in sys.path:
+            sys.path.insert(0, FINE_TUNING_PATH)
+        
+        from utils.model.model_utils import create_vision_only_model
+        
+        # Infer model configuration from checkpoint
+        state_dict = torch.load(checkpoint_path, map_location='cpu')
+        
+        # Detect projection head configuration
+        image_head_layers = None
+        proj_keys = [k for k in state_dict if k.startswith('image_projection.')]
+        if proj_keys:
+            layer_weights = {}
+            for k in proj_keys:
+                if 'mlp.' in k and 'weight' in k:
+                    parts = k.split('.')
+                    layer_idx = int(parts[2])
+                    layer_weights[layer_idx] = state_dict[k].shape
+            
+            if layer_weights:
+                sorted_layers = sorted(layer_weights.items())
+                image_head_layers = [sorted_layers[0][1][1]]  # Input dim
+                for _, shape in sorted_layers:
+                    image_head_layers.append(shape[0])  # Output dim
+        
+        # Create the vision-only model
+        model, preprocess = create_vision_only_model(
+            model_name=model_name,
+            device=device,
+            pretrained=False,
+            image_head_layers=image_head_layers,
+        )
+        
+        # Load weights
+        model.load_state_dict(state_dict, strict=False) # strict=False to allow loading models with different keys (e.g. missing text encoder)
+        model.to(device)
+        model.eval()
+        
+        return model, preprocess
+    
     def _loss_implementation(self, incoming_image):
-        incoming_embedding = self.image_embedder.encode_image(incoming_image)
-        return compute_embedding_similarity_loss(
+        incoming_embedding = self.image_embedder.encode_image(incoming_image) # type: ignore
+        return self._compute_embedding_similarity_loss(
             static_embedding=self.processed_target_embedding,
             dynamic_embedding=incoming_embedding,
             mode=self.mode,
             is_static_embedding_prenormalized=True,
         )
+    def _validate_embedding_similarity_mode(self, mode: str):
+        if mode not in ('cosine', 'l2'):
+            raise ValueError(f"Unsupported mode: {mode}. Choose 'cosine' or 'l2'.")
+
+    def _compute_embedding_similarity_loss(
+        self,
+        static_embedding,
+        dynamic_embedding,
+        mode: str = 'cosine',
+        is_static_embedding_prenormalized: bool = True,
+    ):
+        self._validate_embedding_similarity_mode(mode)
+        if mode == 'cosine':
+            return compute_cosine_distance(
+                static_embedding,
+                dynamic_embedding,
+                is_static_embedding_prenormalized=is_static_embedding_prenormalized,
+            )
+        return torch.nn.functional.mse_loss(dynamic_embedding, static_embedding)
