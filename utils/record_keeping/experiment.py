@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import matplotlib.pyplot as plt
 import torch
 
-from utils.config import DEFAULT_OPTIMIZATION_RUNS_DIR
+from config import DEFAULT_OPTIMIZATION_RUNS_DIR
 from utils.record_keeping.config import to_serializable
 
 

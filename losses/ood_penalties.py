@@ -15,7 +15,7 @@ from diffusers import AutoencoderKL, StableDiffusionPipeline
 class DiffusionConfusionLoss(BaseLoss):
     def __init__(self, device, cache_dir=None):
         if cache_dir is None:
-            from utils.config import DEFAULT_MODEL_WEIGHTS_DIR
+            from config import DEFAULT_MODEL_WEIGHTS_DIR
             cache_dir = os.path.join(DEFAULT_MODEL_WEIGHTS_DIR, "sd_cache")
         # Load the pipeline
         model_id = "stabilityai/stable-diffusion-2-1-base"
@@ -46,7 +46,7 @@ class DiffusionConfusionLoss(BaseLoss):
 class VAEReconstructionLoss(BaseLoss):
     def __init__(self, device, cache_dir=None):
         if cache_dir is None:
-            from utils.config import DEFAULT_MODEL_WEIGHTS_DIR
+            from config import DEFAULT_MODEL_WEIGHTS_DIR
             cache_dir = os.path.join(DEFAULT_MODEL_WEIGHTS_DIR, "sd_cache")
         print(f"Using cache directory for VAE: {cache_dir}")
         self.vae = AutoencoderKL.from_pretrained(

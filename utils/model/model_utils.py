@@ -17,7 +17,7 @@ from torchvision.models import (
     vit_l_32,
 )
 
-from utils.config import DEFAULT_MODEL_WEIGHTS_DIR
+from config import DEFAULT_MODEL_WEIGHTS_DIR
 
 # Directory for cached fine-tuned weights
 MODEL_WEIGHTS_DIR = DEFAULT_MODEL_WEIGHTS_DIR

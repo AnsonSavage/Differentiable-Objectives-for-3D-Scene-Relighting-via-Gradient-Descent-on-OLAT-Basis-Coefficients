@@ -21,7 +21,7 @@ class FLUXKontextRelighter():
         lora_weight_name: str = "relighting-kontext-dev-lora-v3.safetensors",
     ):
         if not cache_dir:
-            from utils.config import DEFAULT_MODEL_WEIGHTS_DIR
+            from config import DEFAULT_MODEL_WEIGHTS_DIR
             cache_dir = os.path.join(DEFAULT_MODEL_WEIGHTS_DIR, "flux")
 
         kontext_dir = os.path.join(cache_dir, "kontext-dev")

@@ -4,5 +4,5 @@
 render/
 examples/example_olats/
 __pycache__/
-utils/model/weights/
+MODEL_WEIGHTS/
 OPTIMIZATION_RUNS/
