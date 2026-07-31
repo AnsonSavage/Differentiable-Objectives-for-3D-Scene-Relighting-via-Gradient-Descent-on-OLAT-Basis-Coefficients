@@ -47,7 +47,7 @@ def get_model_weights_path(filename_or_path: str) -> str:
         filename=filename_or_path,
         local_dir=MODEL_WEIGHTS_DIR,
     )
-def _infer_head_layers(state_dict: dict, prefix: str) -> list[int] | None:
+def infer_head_layers(state_dict: dict, prefix: str) -> list[int] | None:
     """Infer MLP projection head layer dimensions from a saved state_dict."""
     proj_keys = [k for k in state_dict if k.startswith(f"{prefix}.")]
     if not proj_keys:
@@ -84,7 +84,7 @@ def create_vision_only_model(
         pretrained: If True, load ImageNet pretrained weights.
         image_head_layers: Optional projection head layer sizes (e.g., [768, 256, 64]).
         projection_activation: Activation function for projection head.
-        fine_tune: Optional fine-tuned weights file.
+        fine_tune: Optional fine-tuned weights file or checkpoint path.
 
     Returns:
         (model, preprocess_transform)
@@ -96,6 +96,13 @@ def create_vision_only_model(
         raise ValueError(f"Unknown model: {model_name}. Choose from {list(_VIT_REGISTRY.keys())}")
 
     factory_fn, weights_enum, embed_dim, image_size = _VIT_REGISTRY[model_name]
+
+    state_dict = None
+    if fine_tune is not None:
+        weights_path = get_model_weights_path(fine_tune)
+        state_dict = torch.load(weights_path, map_location="cpu")
+        if image_head_layers is None:
+            image_head_layers = infer_head_layers(state_dict, "image_projection")
 
     if pretrained:
         weights_path = os.path.join(MODEL_WEIGHTS_DIR, f"{model_name}_imagenet.pt")
@@ -121,12 +128,13 @@ def create_vision_only_model(
         image_head = _ProjectionHead(image_head_layers, activation=projection_activation)
 
     model = _VisionOnlyModel(vit, embed_dim, image_projection=image_head)
-    model.to(device)
 
-    if fine_tune is not None:
-        weights_path = get_model_weights_path(fine_tune)
-        state_dict = torch.load(weights_path, map_location=device)
-        model.load_state_dict(state_dict)
+    if state_dict is not None:
+        print(f"Loading fine-tuned weights from {fine_tune}...")
+        model.load_state_dict(state_dict, strict=False)
+
+    model.to(device)
+    model.eval()
 
     print(f"Vision-only model loaded in {time.time() - loading_time_start:.2f} seconds")
     return model, preprocess
@@ -167,9 +175,9 @@ def create_clip_model_and_tokenizer(
         state_dict = torch.load(weights_path, map_location="cpu")
 
         if image_head_layers is None:
-            image_head_layers = _infer_head_layers(state_dict, "image_projection")
+            image_head_layers = infer_head_layers(state_dict, "image_projection")
         if text_head_layers is None:
-            text_head_layers = _infer_head_layers(state_dict, "text_projection")
+            text_head_layers = infer_head_layers(state_dict, "text_projection")
 
     model.to(device)
     model = _wrap_model_with_projection_heads(

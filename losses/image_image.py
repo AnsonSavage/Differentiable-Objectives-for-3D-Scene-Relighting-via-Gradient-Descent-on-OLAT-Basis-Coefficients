@@ -287,43 +287,14 @@ class ImageEmbeddingSimilarityLoss(ImageImageLoss):
 
     def _load_image_embedder(self, checkpoint_path, device, model_name='vit_b_32'):
         """Load the image embedder model from checkpoint."""
-        
         from utils.model.model_utils import create_vision_only_model
-        
-        # Infer model configuration from checkpoint
-        state_dict = torch.load(checkpoint_path, map_location='cpu')
-        
-        # Detect projection head configuration
-        image_head_layers = None
-        proj_keys = [k for k in state_dict if k.startswith('image_projection.')]
-        if proj_keys:
-            layer_weights = {}
-            for k in proj_keys:
-                if 'mlp.' in k and 'weight' in k:
-                    parts = k.split('.')
-                    layer_idx = int(parts[2])
-                    layer_weights[layer_idx] = state_dict[k].shape
-            
-            if layer_weights:
-                sorted_layers = sorted(layer_weights.items())
-                image_head_layers = [sorted_layers[0][1][1]]  # Input dim
-                for _, shape in sorted_layers:
-                    image_head_layers.append(shape[0])  # Output dim
-        
-        # Create the vision-only model
-        model, preprocess = create_vision_only_model(
+
+        return create_vision_only_model(
             model_name=model_name,
             device=device,
             pretrained=False,
-            image_head_layers=image_head_layers,
+            fine_tune=checkpoint_path,
         )
-        
-        # Load weights
-        model.load_state_dict(state_dict, strict=False) # strict=False to allow loading models with different keys (e.g. missing text encoder)
-        model.to(device)
-        model.eval()
-        
-        return model, preprocess
     
     def _loss_implementation(self, incoming_image):
         incoming_embedding = self.image_embedder.encode_image(incoming_image) # type: ignore
