@@ -14,7 +14,6 @@ from torch import nn
 from utils.image.image import resize_then_crop
 from utils.image.preprocess_utils import preprocess_image_input
 from utils.losses.base import BaseLoss
-from utils.losses.extractors import VGGIntermediate
 from utils.losses.loss_utils import compute_cosine_distance
 
 
@@ -169,11 +168,55 @@ class ImageImageCLIPLoss(ImageImageLoss):
         return preprocess_image_input(original, preprocess=self.clip_preprocess, device=self.device)
 
 class VGGStyleTransferLoss(ImageImageLoss):
+    class VGGIntermediate(nn.Module):
+        """VGG feature extractor that captures intermediate layer activations.
+        
+        Supports VGG16 and VGG19 architectures. Used for style transfer and 
+        perceptual losses that compare features at multiple layers.
+        """
+        def __init__(self, requested=None, backbone='vgg16'):
+            super().__init__()
+            if requested is None:
+                requested = []
+            # Use register_buffer so they move to device automatically with the model
+            self.register_buffer('mean', torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
+            self.register_buffer('std', torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+
+            import torchvision.models as models
+            self.intermediates = {}
+            self.backbone = backbone
+            if backbone == 'vgg16':
+                self.vgg = models.vgg16(pretrained=True).features.eval()
+            elif backbone == 'vgg19':
+                self.vgg = models.vgg19(pretrained=True).features.eval()
+            else:
+                raise ValueError(f"Unsupported backbone: {backbone}. Choose 'vgg16' or 'vgg19'.")
+            
+            for i, m in enumerate(self.vgg.children()):
+                if isinstance(m, nn.ReLU):   # set relu layers to NOT do relu in place
+                    m.inplace = False
+                if isinstance(m, nn.MaxPool2d):
+                    self.vgg[i] = nn.AvgPool2d(2, 2)
+                if i in requested:
+                    def curry(idx):
+                        def hook(module, input, output):
+                            self.intermediates[idx] = output
+                        return hook
+                    m.register_forward_hook(curry(i))
+
+        def forward(self, x):
+            self.intermediates = {} # Clear previous activations
+            self.vgg(self._normalize(x))
+            return self.intermediates
+
+        def _normalize(self, image):
+            return (image - self.mean) / self.std
+
     def __init__(self, reference_image, requested_names=['conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1'], comparison_height=224, comparison_width=224, device='cuda', backbone='vgg16'): # TODO: it might be required to do comparison at 224x224 for VGG
         super().__init__(reference_image, comparison_height, comparison_width, device)
         self.backbone = backbone
         self.requested_indices = self._get_requested_indices(requested_names, backbone)
-        self.model = VGGIntermediate(requested=self.requested_indices, backbone=backbone).eval().to(self.device)
+        self.model = self.VGGIntermediate(requested=self.requested_indices, backbone=backbone).eval().to(self.device)
         
         with torch.no_grad():
             self.processed_target_image = self.processed_target_image.unsqueeze(0) if self.processed_target_image.dim() == 3 else self.processed_target_image # [1,C,H,W]
