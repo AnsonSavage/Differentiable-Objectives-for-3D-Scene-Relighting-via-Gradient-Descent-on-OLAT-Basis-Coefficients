@@ -39,9 +39,6 @@ class DiffusionConfusionLoss(BaseLoss):
     
     def get_prompt_info(self):
         return {"loss_description": "Diffusion Confusion Loss using Stable Diffusion 2.1"}
-    
-    def __call__(self, input_image: torch.Tensor):
-        return self.forward(input_image)
 
 class VAEReconstructionLoss(BaseLoss):
     def __init__(self, device, cache_dir=None):
@@ -79,15 +76,13 @@ class VAEReconstructionLoss(BaseLoss):
     
     def get_prompt_info(self):
         return {"loss_description": "VAE Reconstruction Loss using Stable Diffusion 2.1 VAE"}
-    
-    def __call__(self, input_image: torch.Tensor):
-        return self.get_reconstruction_loss(input_image)
 
 class AverageImageLuminanceLoss(BaseLoss):
     """Loss that penalizes the average luminance of an image being different from a goal average luminance."""
     def __init__(self, device, goal_average_luminance: float = 1.0):
         self.image_luminance_converter_tensor = torch.Tensor([0.2126, 0.7152, 0.0722]).view(3, 1, 1).to(device)
         self.goal_average_luminance = torch.tensor(goal_average_luminance).to(device)
+
     def srgb_to_linear(self, image):
         linear_mask = image <= 0.04045
         linear_image = torch.zeros_like(image)
@@ -95,9 +90,10 @@ class AverageImageLuminanceLoss(BaseLoss):
         linear_image[~linear_mask] = ((image[~linear_mask] + 0.055) / 1.055) ** 2.4
         return linear_image
 
-    def __call__(self, image):
+    def forward(self, image):
         linear_image = self.srgb_to_linear(image)
         luminance = torch.sum(linear_image * self.image_luminance_converter_tensor, dim=0)
         return F.mse_loss(luminance.mean(), self.goal_average_luminance)
+
     def get_prompt_info(self):
         return {'loss_description': f'Image Darkness Loss with goal average luminance {self.goal_average_luminance}'}
