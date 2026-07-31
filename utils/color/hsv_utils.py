@@ -1,7 +1,11 @@
 import torch
-import torchvision.transforms.v2.functional._color as C
 
-def differentiable_hsv_to_rgb_google(img: torch.Tensor) -> torch.Tensor:
+
+def _differentiable_hsv_to_rgb_google(img: torch.Tensor) -> torch.Tensor:
+    """Convert an image from HSV to RGB color space using a differentiable approximation.
+    This method was created by Gemini
+    """
+    
     h, s, v = img.unbind(dim=-3)
     h = h % 1.0
     h6 = h * 6.0
@@ -45,27 +49,8 @@ def differentiable_hsv_to_rgb_google(img: torch.Tensor) -> torch.Tensor:
     
     return torch.stack((r, g, b), dim=-3)
 
-
-def hsv_to_rgb_soft_gpt(img: torch.Tensor, tau: float = 8.0, wrap_h: bool = True) -> torch.Tensor:
-    h, s, v = img.unbind(dim=-3)
-    if wrap_h:
-        h = h - torch.floor(h)
-    def fract(x):
-        return x - torch.floor(x)
-    offsets = torch.tensor([0.0, 2.0 / 3.0, 1.0 / 3.0],
-                           device=img.device, dtype=img.dtype).view(-1, 1, 1)
-    hp = fract(h.unsqueeze(-3) + offsets)
-    p = (hp * 6.0 - 3.0).abs()
-    w = torch.sigmoid(tau * (p - 1.0))
-    rgb = v.unsqueeze(-3) * ((1.0 - s).unsqueeze(-3) + w * s.unsqueeze(-3))
-    return rgb
-
 def hsv_to_rgb(image: torch.Tensor) -> torch.Tensor:
     """Convert an image [B, C, H, W] from HSV to RGB color space."""
-    # converter = C._hsv_to_rgb
-    converter = differentiable_hsv_to_rgb_google
-    try:
-        result = converter(image)
-    except Exception as e:
-        raise RuntimeError("Could not convert tensor of size {} from HSV to RGB. Ensure you have a recent version of torchvision installed.".format(image.shape))
+    converter = _differentiable_hsv_to_rgb_google
+    result = converter(image)
     return result

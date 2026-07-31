@@ -1,6 +1,6 @@
-from __future__ import annotations
+from collections.abc import Iterable
+
 import torch
-from typing import Iterable, Tuple
 
 # This file is a port of functions from https://github.com/MrLixm/AgXc/blob/main/python/AgX.numpy.py ported to PyTorch
 
@@ -84,7 +84,7 @@ def cdlPowerTorch(array: torch.Tensor, power) -> torch.Tensor:
 def saturateTorch(
     array: torch.Tensor,
     saturation,
-    coefs: Tuple[float, float, float] = (0.2126, 0.7152, 0.0722),
+    coefs: tuple[float, float, float] = (0.2126, 0.7152, 0.0722),
 ) -> torch.Tensor:
     """
     Port of saturate from AgX.numpy.py.
@@ -110,7 +110,7 @@ def saturateTorch(
 def saturateTorch_gamut_safe(
     array: torch.Tensor,
     saturation,
-    coefs: Tuple[float, float, float] = (0.2126, 0.7152, 0.0722),
+    coefs: tuple[float, float, float] = (0.2126, 0.7152, 0.0722),
     eps: float = 1e-6,
 ) -> torch.Tensor:
     """
@@ -231,7 +231,7 @@ def equation_full_curve_torch(
     x_pivot: float,
     y_pivot: float,
     slope_pivot: float,
-    power: Tuple[float, float],
+    power: tuple[float, float],
 ) -> torch.Tensor:
     """Port of equation_full_curve from AgX.numpy.py."""
     device = lut_array.device
