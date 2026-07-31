@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import torch
 
 from config import DEFAULT_OPTIMIZATION_RUNS_DIR
-from utils.record_keeping.config import to_serializable
+from utils.record_keeping.serialization import to_serializable
 
 
 class FolderManager:
