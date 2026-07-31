@@ -17,8 +17,10 @@ from torchvision.models import (
     vit_l_32,
 )
 
-# Local directory for cached fine-tuned weights
-MODEL_WEIGHTS_DIR = os.path.join(os.path.dirname(__file__), "weights")
+from utils.config import DEFAULT_MODEL_WEIGHTS_DIR
+
+# Directory for cached fine-tuned weights
+MODEL_WEIGHTS_DIR = DEFAULT_MODEL_WEIGHTS_DIR
 HF_FINE_TUNED_REPO = "AnsonSavage/FineTunedOpenCLIPModelsForRelightingLossEvaluation"
 
 

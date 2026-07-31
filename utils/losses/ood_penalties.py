@@ -13,14 +13,14 @@ from diffusers import AutoencoderKL, StableDiffusionPipeline
 
 
 class DiffusionConfusionLoss(BaseLoss):
-    def __init__(self, device, cache_dir=None):  # TODO: PATH_UPDATE diffusion model cache directory
+    def __init__(self, device, cache_dir=None):
+        if cache_dir is None:
+            from utils.config import DEFAULT_MODEL_WEIGHTS_DIR
+            cache_dir = os.path.join(DEFAULT_MODEL_WEIGHTS_DIR, "sd_cache")
         # Load the pipeline
-        model_id = "stabilityai/stable-diffusion-2-1-base" # TODO: use a newer model
+        model_id = "stabilityai/stable-diffusion-2-1-base"
         self.device = device
-        if cache_dir is not None:
-            self.pipe = StableDiffusionPipeline.from_pretrained(model_id, cache_dir=cache_dir, local_files_only=True).to(device)
-        else:
-            self.pipe = StableDiffusionPipeline.from_pretrained(model_id).to(device)
+        self.pipe = StableDiffusionPipeline.from_pretrained(model_id, cache_dir=cache_dir).to(device)
         num_timesteps = 50
         self.pipe.scheduler.set_timesteps(num_timesteps)
     
@@ -45,20 +45,15 @@ class DiffusionConfusionLoss(BaseLoss):
 
 class VAEReconstructionLoss(BaseLoss):
     def __init__(self, device, cache_dir=None):
-        # Load the pre-trained VAE from Stable Diffusion 2.1
-        if cache_dir is not None:
-            print(f"Using cache directory for VAE: {cache_dir}")
-            self.vae = AutoencoderKL.from_pretrained(
-                "stabilityai/stable-diffusion-2-1-base", 
-                subfolder="vae",
-                cache_dir=cache_dir,
-                local_files_only=True
-            ).to(device)
-        else:
-            self.vae = AutoencoderKL.from_pretrained(
-                "stabilityai/stable-diffusion-2-1-base", 
-                subfolder="vae"
-            ).to(device)
+        if cache_dir is None:
+            from utils.config import DEFAULT_MODEL_WEIGHTS_DIR
+            cache_dir = os.path.join(DEFAULT_MODEL_WEIGHTS_DIR, "sd_cache")
+        print(f"Using cache directory for VAE: {cache_dir}")
+        self.vae = AutoencoderKL.from_pretrained(
+            "stabilityai/stable-diffusion-2-1-base", 
+            subfolder="vae",
+            cache_dir=cache_dir,
+        ).to(device)
         self.vae.eval()
         
 

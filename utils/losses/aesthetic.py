@@ -59,8 +59,8 @@ class LAIONAestheticScorer(BaseAestheticScorer):
         Returns:
             Loaded aesthetic model
         """
-        home = expanduser("~")
-        cache_folder = os.path.join(home, ".cache", "emb_reader")  # TODO: PATH_UPDATE aesthetic model cache directory
+        from utils.config import DEFAULT_MODEL_WEIGHTS_DIR
+        cache_folder = os.path.join(DEFAULT_MODEL_WEIGHTS_DIR, "aesthetic")
         path_to_model = os.path.join(cache_folder, f"sa_0_4_{clip_model}_linear.pth")
         if not os.path.exists(path_to_model):
             os.makedirs(cache_folder, exist_ok=True)

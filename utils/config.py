@@ -12,3 +12,9 @@ DEFAULT_OPTIMIZATION_RUNS_DIR = os.environ.get(
     "OPTIMIZATION_RUNS_DIR",
     str(PROJECT_ROOT / "OPTIMIZATION_RUNS"),
 )
+
+# Default base directory for model weights and cached models
+DEFAULT_MODEL_WEIGHTS_DIR = os.environ.get(
+    "MODEL_WEIGHTS_DIR",
+    str(PROJECT_ROOT / "model_weights"),
+)

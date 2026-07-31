@@ -11,20 +11,67 @@ from utils.losses.image_image import ImageImageLoss
 
 
 class FLUXKontextRelighter():
-    def __init__(self, cache_dir: str = "", device='cuda', seed: int | None = None):
-        # TODO: PATH_UPDATE Flux model cache directory
+    def __init__(
+        self, 
+        cache_dir: str | None = None, 
+        device: str = 'cuda', 
+        seed: int | None = None,
+        base_model_repo: str = "black-forest-labs/FLUX.1-Kontext-dev",
+        lora_repo: str = "kontext-community/relighting-kontext-dev-lora-v3",
+        lora_weight_name: str = "relighting-kontext-dev-lora-v3.safetensors",
+    ):
         if not cache_dir:
-            raise ValueError("cache_dir must be set. TODO: PATH_UPDATE Flux model cache directory")
+            from utils.config import DEFAULT_MODEL_WEIGHTS_DIR
+            cache_dir = os.path.join(DEFAULT_MODEL_WEIGHTS_DIR, "flux")
+
         kontext_dir = os.path.join(cache_dir, "kontext-dev")
         lora_dir = os.path.join(cache_dir, "community_relighting_lora")
 
-        self.pipe = FluxKontextPipeline.from_pretrained(kontext_dir, torch_dtype=torch.bfloat16, local_files_only=True)
-        try:
-            self.pipe.load_lora_weights(lora_dir, weight_name='relighting-kontext-dev-lora-v3.safetensors')
-            self.pipe.to(device)
-            print(f"LoRA weights from {lora_dir} loaded successfully.")
-        except Exception as e:
-            print(f"Error loading LoRA weights from {lora_dir}: {e}")
+        # Load or download base FLUX Kontext pipeline
+        if os.path.exists(kontext_dir) and any(os.scandir(kontext_dir)):
+            print(f"Loading FLUX Kontext pipeline from local directory: {kontext_dir}...")
+            self.pipe = FluxKontextPipeline.from_pretrained(
+                kontext_dir, 
+                torch_dtype=torch.bfloat16, 
+                local_files_only=True
+            )
+        else:
+            print(f"FLUX Kontext pipeline not found locally at {kontext_dir}. Downloading from Hugging Face ({base_model_repo})...")
+            os.makedirs(cache_dir, exist_ok=True)
+            self.pipe = FluxKontextPipeline.from_pretrained(
+                base_model_repo, 
+                torch_dtype=torch.bfloat16,
+                cache_dir=cache_dir
+            )
+
+        # Load or download relighting LoRA weights
+        local_lora_file = os.path.join(lora_dir, lora_weight_name)
+        direct_cache_lora_file = os.path.join(cache_dir, lora_weight_name)
+
+        if os.path.exists(local_lora_file):
+            actual_lora_dir = lora_dir
+            actual_weight_name = lora_weight_name
+            print(f"Loading LoRA weights from local path: {local_lora_file}")
+        elif os.path.exists(direct_cache_lora_file):
+            actual_lora_dir = cache_dir
+            actual_weight_name = lora_weight_name
+            print(f"Loading LoRA weights from local path: {direct_cache_lora_file}")
+        else:
+            print(f"LoRA weights '{lora_weight_name}' not found locally. Downloading from Hugging Face ({lora_repo})...")
+            os.makedirs(lora_dir, exist_ok=True)
+            from huggingface_hub import hf_hub_download
+
+            downloaded_path = hf_hub_download(
+                repo_id=lora_repo,
+                filename=lora_weight_name,
+                local_dir=lora_dir,
+            )
+            actual_lora_dir = lora_dir
+            actual_weight_name = os.path.basename(downloaded_path)
+
+        self.pipe.load_lora_weights(actual_lora_dir, weight_name=actual_weight_name)
+        self.pipe.to(device)
+        print(f"LoRA weights from {actual_lora_dir} loaded successfully.")
         self.device = device
         self.seed = seed
 
