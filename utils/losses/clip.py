@@ -2,10 +2,13 @@
 CLIP-based loss functions for image optimization.
 """
 from __future__ import annotations
+
 import torch
-from PIL import Image
-from utils.losses.base import BaseLoss
+
 from utils.image.preprocess_utils import preprocess_image_input
+from utils.losses.base import BaseLoss
+from utils.losses.loss_utils import compute_cosine_distance
+
 
 class CLIPCosineSimilarity(BaseLoss):
     """Loss based on CLIP similarity between image and text."""
@@ -32,15 +35,9 @@ class CLIPCosineSimilarity(BaseLoss):
             torch.Tensor: 1 - cosine_similarity between image and text features
         """
         image = preprocess_image_input(image, preprocess=self.preprocess, device=self.device)
-            
         image_features = self.model.encode_image(image)
-        image_features = image_features / image_features.norm(dim=1, keepdim=True)
 
-        cosine_similarity = image_features @ self.text_features.T
-
-        # The more similar they are, the closer cosine_similarity will be to 1,
-        # and the closer the loss will be to 0
-        return 1 - cosine_similarity
+        return compute_cosine_distance(self.text_features, image_features)
     
     def get_prompt_info(self):
         """Get prompt information for this loss."""
