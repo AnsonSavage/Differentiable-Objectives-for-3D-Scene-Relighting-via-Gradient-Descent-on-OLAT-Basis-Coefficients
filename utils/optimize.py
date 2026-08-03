@@ -1,5 +1,5 @@
 """
-Training utilities for image optimization.
+Optimization loop for learning multipliers of OLATs for a given criterion.
 """
 from __future__ import annotations
 from collections.abc import Callable
@@ -17,7 +17,7 @@ from utils.color.linear_to_srgb_converters import LinearRec709TosRGB, LinearRec7
 from utils.seed import set_global_seed
 from utils.parameter_strategies import ParameterStrategy, RGBParameterStrategy, HSVParameterStrategy
 
-def train_with_criterion(
+def optimize_with_criterion(
     scene: Scene,
     learning_rate: float,
     n_iterations: int,

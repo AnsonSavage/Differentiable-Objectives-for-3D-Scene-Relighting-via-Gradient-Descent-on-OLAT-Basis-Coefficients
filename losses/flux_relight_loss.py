@@ -202,12 +202,12 @@ class FluxLoss(torch.nn.Module):
             self.image_comparison_criterion = self.image_comparison_criterion_type(reference_image=self.relit_image)
 
     def on_run_dir_created(self, run_dir: str):
-        """Hook called by the training loop to link this loss's save dir to the run folder."""
+        """Hook called by the optimization loop to link this loss's save dir to the run folder."""
         if self._pending_save_dir is None:
             self._pending_save_dir = run_dir
     
     def forward(self, input_image: torch.Tensor) -> torch.Tensor:
-        self._ensure_initialized() # This is all done to allow the train function to set the save directory
+        self._ensure_initialized() # This is all done to allow the optimize function to set the save directory
         return self.image_comparison_criterion(input_image)
 
     def get_prompt_info(self):

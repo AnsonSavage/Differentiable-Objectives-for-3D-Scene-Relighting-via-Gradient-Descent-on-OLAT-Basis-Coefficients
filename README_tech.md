@@ -7,7 +7,7 @@ This repository contains code for optimizing OLAT (One Light At a Time) lighting
 ### Root Directory
 - `examples/` - Example notebooks demoing the use of the optimization framework with various losses
 - `losses/` - Loss function objectives (CLIP, SSIM, LPIPS, Aesthetic, etc.)
-- `utils/` - Core utility modules (training, color conversion, record keeping, etc.) and `external_utilities/`
+- `utils/` - Core utility modules (optimization, color conversion, record keeping, etc.) and `external_utilities/`
 - `optimization_runs/` - Output directory for optimization results
 - `config.py` - Global project configuration settings
 
