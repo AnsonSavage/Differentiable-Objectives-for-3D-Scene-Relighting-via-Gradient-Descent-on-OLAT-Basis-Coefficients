@@ -1,7 +1,6 @@
 *.jpg
 *.jpeg
 *.png
-render/
 examples/EXAMPLE_OLATS/
 __pycache__/
 MODEL_WEIGHTS/
