@@ -1,21 +1,36 @@
 """
 Optimization loop for learning multipliers of OLATs for a given criterion.
 """
+
 from __future__ import annotations
-from collections.abc import Callable
+
 import os
+from collections.abc import Callable
+
 import torch
 from torchvision.transforms import v2
 from tqdm import tqdm
 
-from utils.record_keeping.experiment import FolderManager, PlotManager, ResourceUsageTracker
-from losses.base import UpdatableLoss, BaseLoss
+from losses.base import BaseLoss, UpdatableLoss
+from utils.color.linear_to_srgb_converters import (
+    LinearRec709ToAgXBase,
+    LinearRec709TosRGB,
+)
+from utils.image.display import display_image_batch_grid
+from utils.parameter_strategies import (
+    HSVParameterStrategy,
+    ParameterStrategy,
+    RGBParameterStrategy,
+)
+from utils.record_keeping.experiment import (
+    FolderManager,
+    PlotManager,
+    ResourceUsageTracker,
+)
 from utils.record_keeping.settings import build_settings
 from utils.scene import Scene
-from utils.image.display import display_image_batch_grid
-from utils.color.linear_to_srgb_converters import LinearRec709TosRGB, LinearRec709ToAgXBase
 from utils.seed import set_global_seed
-from utils.parameter_strategies import ParameterStrategy, RGBParameterStrategy, HSVParameterStrategy
+
 
 def optimize_with_criterion(
     scene: Scene,
