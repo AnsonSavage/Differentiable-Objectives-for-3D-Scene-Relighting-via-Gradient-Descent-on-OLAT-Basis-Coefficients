@@ -2,7 +2,7 @@
 *.jpeg
 *.png
 render/
-examples/example_olats/
+examples/EXAMPLE_OLATS/
 __pycache__/
 MODEL_WEIGHTS/
 OPTIMIZATION_RUNS/

@@ -4,9 +4,9 @@ from utils.scene import MultiLayerEXRScene, OLATDirScene
 
 
 BASE_DIR = Path(__file__).resolve().parent
-LOCAL_EXAMPLE_OLATS_DIR = BASE_DIR / "example_olats"
+LOCAL_EXAMPLE_OLATS_DIR = BASE_DIR / "EXAMPLE_OLATS"
 HF_BUCKET_ID = "AnsonSavage/DemoOLATScenes"
-PREFIX = "example_olats"  # Currently, there is only one folder, but this is to be resilient in case more are added in the future
+PREFIX = "EXAMPLE_OLATS"  # Currently, there is only one folder, but this is to be resilient in case more are added in the future
 
 class OlatCacheManager:
     _download_attempted = False
@@ -30,7 +30,7 @@ class OlatCacheManager:
         for item in items:
             if item.type == "file":
                 remote_path = item.path
-                local_path = BASE_DIR / remote_path  # All the files we're getting are already prefixed with "example_olats/"
+                local_path = BASE_DIR / remote_path  # All the files we're getting are already prefixed with "EXAMPLE_OLATS/"
                 file_pairs.append((remote_path, local_path))
 
         download_bucket_files(HF_BUCKET_ID, files=file_pairs)

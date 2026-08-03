@@ -636,7 +636,7 @@ def register():
     bpy.types.Scene.olat_output_dir = bpy.props.StringProperty(
         name="Output Directory",
         description="Directory to save rendered EXR files",
-        default="//examples/example_olats",
+        default="//examples/EXAMPLE_OLATS",
         subtype='DIR_PATH',
         
     )
