@@ -2,11 +2,10 @@ from pathlib import Path
 
 from utils.scene import MultiLayerEXRScene, OLATDirScene
 
-
 BASE_DIR = Path(__file__).resolve().parent
 LOCAL_EXAMPLE_OLATS_DIR = BASE_DIR / "EXAMPLE_OLATS"
 HF_BUCKET_ID = "AnsonSavage/DemoOLATScenes"
-PREFIX = "EXAMPLE_OLATS"  # Currently, there is only one folder, but this is to be resilient in case more are added in the future
+PREFIX = "EXAMPLE_OLATS"
 
 class OlatCacheManager:
     _download_attempted = False
@@ -22,7 +21,6 @@ class OlatCacheManager:
             return
         OlatCacheManager._download_attempted = True
 
-        
         from huggingface_hub import list_bucket_tree, download_bucket_files
 
         file_pairs = []
