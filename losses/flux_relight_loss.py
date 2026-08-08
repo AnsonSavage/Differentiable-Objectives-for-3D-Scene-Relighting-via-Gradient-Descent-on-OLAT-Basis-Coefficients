@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import torch
 from diffusers import FluxKontextPipeline
 
+from losses.base import BaseLoss
+from losses.image_image import ImageImageLoss
 from utils.image.display import display_image_batch_grid
 from utils.image.image import resize_then_crop
-from losses.image_image import ImageImageLoss
 
 
 class FLUXKontextRelighter():
@@ -164,9 +165,9 @@ class RelightImageCache():
             print(f"Using cached relighted images for prompt: '{prompt}'")
         return self.cache[key]
 
-class FluxLoss(torch.nn.Module):
+class FluxLoss(BaseLoss):
     def __init__(self, cache: RelightImageCache, target_text: str, image_comparison_criterion_cls: type[ImageImageLoss], num_relighted_images: int = 1, save_dir: str | None = None, display=False):
-        super(FluxLoss, self).__init__()
+        super().__init__()
         # Defer relighting until we can link to the run directory
         self.images_cache = cache
         self.target_text = target_text

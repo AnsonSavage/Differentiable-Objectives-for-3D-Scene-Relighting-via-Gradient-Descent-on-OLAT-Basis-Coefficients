@@ -24,7 +24,7 @@ class BaseLoss(nn.Module, ABC):
         """
 
     @abstractmethod
-    def get_prompt_info(self):
+    def get_prompt_info(self) -> dict:
         """Get prompt information from this loss for logging.
 
         Returns:

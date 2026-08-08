@@ -17,7 +17,7 @@ class BaseAestheticScorer:
     """Abstract scorer interface."""
 
     @abstractmethod
-    def score(self, image):
+    def score(self, image) -> torch.Tensor:
         """Calculate aesthetic score for an image.
         
         Args:
@@ -96,7 +96,7 @@ class LAIONAestheticScorer(BaseAestheticScorer):
             raise TypeError(f"Expected PIL Image or torch Tensor, got {type(image)}")
         return image
 
-    def score(self, image):
+    def score(self, image) -> torch.Tensor:
         """Calculate the aesthetic score of an image."""
         image = self._preprocess_image(image)
         image_features = self.model.encode_image(image)
@@ -121,7 +121,7 @@ class BaseAestheticLoss(BaseLoss):
         super().__init__()
         self.scorer = scorer
     
-    def get_prompt_info(self):
+    def get_prompt_info(self) -> dict:
         """Get prompt information for aesthetic loss."""
         return {
             "aesthetic_scorer_type": type(self.scorer).__name__
@@ -145,7 +145,7 @@ class AestheticLossWithTarget(BaseAestheticLoss):
         predicted_score = self.scorer.score(image)
         return torch.abs(self.target_score - predicted_score)
     
-    def get_prompt_info(self):
+    def get_prompt_info(self) -> dict:
         """Get prompt information for target-based aesthetic loss."""
         info = super().get_prompt_info()
         info.update({
