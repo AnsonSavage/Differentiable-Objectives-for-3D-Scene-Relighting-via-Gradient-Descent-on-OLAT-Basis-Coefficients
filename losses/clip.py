@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import torch
 
-from utils.image.preprocess_utils import preprocess_image_input
 from losses.base import BaseLoss
 from losses.loss_utils import compute_cosine_distance
+from utils.image.preprocess_utils import preprocess_image_input
 
 
 class CLIPCosineSimilarity(BaseLoss):
@@ -49,7 +49,7 @@ class CLIPDirectionalCosineSimilarity(BaseLoss):
     Implemented as described in equation 9 of https://arxiv.org/pdf/2110.02711
     """
     def __init__(self, initial_text: str, target_text: str, initial_image: torch.Tensor, 
-                 model, tokenizer, device, preprocess, always_prenormalize_vectors=False): # I'm not actually sure how much it matters if you normalize the vectors or not, because we only measure cosine similarity anyway. Oh wait, it actually does matter, because the difference vector will have a different direction depending on whether the inputs were normalized or not.
+                 model, tokenizer, device, preprocess, always_prenormalize_vectors: bool = False): # I'm not actually sure how much it matters if you normalize the vectors or not, because we only measure cosine similarity anyway. Oh wait, it actually does matter, because the difference vector will have a different direction depending on whether the inputs were normalized or not.
         super().__init__()
         self.model = model
         self.initial_text = initial_text
@@ -117,5 +117,5 @@ class CLIPDirectionalCosineSimilarity(BaseLoss):
             "clip_target_text_prompt": self.target_text,
         }
         if hasattr(self, "always_prenormalize_vectors"):
-            info["clip_always_prenormalize_vectors"] = bool(self.always_prenormalize_vectors)
+            info["clip_always_prenormalize_vectors"] = "True" if self.always_prenormalize_vectors else "False"
         return info
