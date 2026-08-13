@@ -5,6 +5,7 @@ import os
 from abc import abstractmethod
 from urllib.request import urlretrieve
 
+import clip
 import torch
 from PIL import Image
 from torch import nn
@@ -39,7 +40,6 @@ class LAIONAestheticScorer(BaseAestheticScorer):
             preprocess: CLIP's preprocess function
             clip_model: CLIP model version
         """
-        import clip
         clip_model_name="vit_b_32"
         model, preprocess = clip.load("ViT-B/32", device=device) # TODO: It'd be cool if you could choose which CLIP model to use
         model.to(device)
