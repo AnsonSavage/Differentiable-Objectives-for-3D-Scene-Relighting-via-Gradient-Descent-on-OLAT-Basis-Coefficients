@@ -275,11 +275,11 @@ def optimize_with_criterion(
         predicted_images = predicted_images.permute(0, 3, 1, 2)
         
         predicted_images = render_color_space_converter(predicted_images)
+        if alpha_mask_tensor is not None:
+            predicted_images *= alpha_mask_tensor.permute(2, 0, 1).unsqueeze(0)
         images_before_augmentations = predicted_images.clone()
         if augmentation:
             predicted_images = torch.stack([augmentation(individual_img) for individual_img in predicted_images])
-        if alpha_mask_tensor is not None: # TODO: Currently only sets non white pixels to black. No support for mixing with another background.
-            predicted_images *= alpha_mask_tensor.permute(2, 0, 1).unsqueeze(0)
         if show_images and show_images_after_augmentation:
             images_after_augmentation = predicted_images.clone()
         if augmentation_callback:

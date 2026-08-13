@@ -79,12 +79,12 @@ class Scene(ABC):
         total_image = torch.sum(images, dim=0)
         if non_optimized is not None:
             total_image += non_optimized
+        if color_space_converter is not None:
+            total_image = color_space_converter(total_image.permute(2, 0, 1)).permute(1, 2, 0) # TODO: we should refactor the code to stop doing so much permuting :)
         if apply_alpha_mask:
             alpha_mask = self.get_alpha_mask()
             if alpha_mask is not None:
                 total_image *= alpha_mask
-        if color_space_converter is not None:
-            total_image = color_space_converter(total_image.permute(2, 0, 1)).permute(1, 2, 0) # TODO: we should refactor the code to stop doing so much permuting :)
         return total_image
 
     def display_scene(self, display_individual_OLATs=True, color_space_converter: LinearRec709TosRGB = LinearRec709ToAgXBase()) -> None:
