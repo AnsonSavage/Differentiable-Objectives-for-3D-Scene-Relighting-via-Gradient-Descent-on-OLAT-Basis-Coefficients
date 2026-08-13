@@ -98,7 +98,7 @@ def create_vision_only_model(
     factory_fn, weights_enum, embed_dim, image_size = _VIT_REGISTRY[model_name]
 
     state_dict = None
-    if fine_tune is not None:
+    if fine_tune:
         weights_path = get_model_weights_path(fine_tune)
         state_dict = torch.load(weights_path, map_location="cpu")
         if image_head_layers is None:
@@ -170,7 +170,7 @@ def create_clip_model_and_tokenizer(
     model, _, preprocess = open_clip.create_model_and_transforms(model_name, pretrained=pretrained)
     tokenizer = open_clip.get_tokenizer(model_name)
 
-    if fine_tune is not None:
+    if fine_tune:
         weights_path = get_model_weights_path(fine_tune)
         state_dict = torch.load(weights_path, map_location="cpu")
 
@@ -187,7 +187,7 @@ def create_clip_model_and_tokenizer(
         activation=projection_activation,
     )
 
-    if fine_tune is not None:
+    if fine_tune:
         print(f"Loading fine-tuned weights from {weights_path}...")
         model.load_state_dict(state_dict)
 
