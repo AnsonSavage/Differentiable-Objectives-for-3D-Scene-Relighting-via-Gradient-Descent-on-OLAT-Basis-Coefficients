@@ -24,17 +24,28 @@ const setupForm = document.getElementById('runs-dir-form');
 const runsDirInput = document.getElementById('runs-dir-input');
 const setupError = document.getElementById('runs-dir-error');
 const changeRunsDirBtn = document.getElementById('change-runs-dir-btn');
+const cancelRunsDirBtn = document.getElementById('runs-dir-cancel-btn');
+const resetRunsDirBtn = document.getElementById('runs-dir-reset-btn');
+const currentRunsDirLabel = document.getElementById('current-runs-dir-label');
 
 // State
 let lastModalData = null;
 let hearts = new Set();
 let stars = new Set();
 
+function updateRunsDirDisplay() {
+  if (currentRunsDirLabel) {
+    const isDefault = CONFIG.is_default ? ' (default)' : '';
+    currentRunsDirLabel.textContent = `Runs: ${CONFIG.runs_dir_name || 'OPTIMIZATION_RUNS'}${isDefault}`;
+    currentRunsDirLabel.title = CONFIG.runs_dir_absolute || '';
+  }
+}
+
 function showRunsDirSetup(message = '') {
   if(!setupOverlay) return;
   if(setupError) setupError.textContent = message;
-  if(runsDirInput && CONFIG.runs_dir_input) {
-    runsDirInput.value = CONFIG.runs_dir_input;
+  if(runsDirInput) {
+    runsDirInput.value = CONFIG.runs_dir_input || CONFIG.runs_dir_absolute || '';
   }
   setupOverlay.hidden = false;
   runsDirInput?.focus();
@@ -492,17 +503,41 @@ setupForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const value = runsDirInput?.value.trim() || '';
   if(!value) {
-    showRunsDirSetup('Enter a runs directory path.');
+    showRunsDirSetup('Enter a runs directory path or click Reset to Default.');
     return;
   }
   try {
     if(setupError) setupError.textContent = 'Saving...';
     await saveConfig(value);
     hideRunsDirSetup();
+    updateRunsDirDisplay();
     clearGalleryState();
     await initializeGallery();
   } catch(err) {
     showRunsDirSetup(err.message);
+  }
+});
+
+cancelRunsDirBtn?.addEventListener('click', () => {
+  hideRunsDirSetup();
+});
+
+resetRunsDirBtn?.addEventListener('click', async () => {
+  try {
+    if(setupError) setupError.textContent = 'Resetting to default...';
+    await saveConfig('', true);
+    hideRunsDirSetup();
+    updateRunsDirDisplay();
+    clearGalleryState();
+    await initializeGallery();
+  } catch(err) {
+    showRunsDirSetup(err.message);
+  }
+});
+
+setupOverlay?.addEventListener('click', (e) => {
+  if (e.target === setupOverlay) {
+    hideRunsDirSetup();
   }
 });
 
@@ -514,10 +549,7 @@ changeRunsDirBtn?.addEventListener('click', () => {
   console.log('Gallery init starting...');
   await loadConfig();
   console.log('Config loaded:', CONFIG);
-  if(!CONFIG.configured) {
-    showRunsDirSetup('Choose a runs directory to continue.');
-    return;
-  }
+  updateRunsDirDisplay();
   await initializeGallery();
   console.log('Gallery initialized');
 })();

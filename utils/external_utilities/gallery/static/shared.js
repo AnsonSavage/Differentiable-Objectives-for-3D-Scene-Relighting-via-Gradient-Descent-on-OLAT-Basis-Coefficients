@@ -3,7 +3,7 @@
  */
 
 // Configuration loaded from backend
-let CONFIG = { runs_dir: '', runs_dir_name: '', runs_dir_absolute: '', runs_dir_input: '', configured: false };
+let CONFIG = { runs_dir: '', runs_dir_name: '', runs_dir_absolute: '', runs_dir_input: '', is_default: true };
 
 async function fetchJSON(url, options = {}) { 
   const r = await fetch(url, options); 
@@ -28,11 +28,11 @@ async function loadConfig() {
   }
 }
 
-async function saveConfig(runsDir) {
+async function saveConfig(runsDir, reset = false) {
   const data = await fetchJSON('/api/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ runs_dir: runsDir }),
+    body: JSON.stringify({ runs_dir: runsDir, reset: reset }),
   });
   CONFIG = data;
   return CONFIG;

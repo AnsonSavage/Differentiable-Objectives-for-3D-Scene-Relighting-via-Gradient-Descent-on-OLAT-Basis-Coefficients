@@ -1,13 +1,20 @@
 from __future__ import annotations
 import json
+import os
 import re
+import sys
 import threading
 from io import BytesIO
 from pathlib import Path
 from typing import List, Dict, Any, Set
 from flask import Flask, jsonify, send_file, request, render_template, abort
 
-import config as gallery_config
+# Ensure local gallery directory can be imported reliably
+_gallery_dir = Path(__file__).resolve().parent
+if str(_gallery_dir) not in sys.path:
+    sys.path.insert(0, str(_gallery_dir))
+
+import gallery_config
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 _lock = threading.Lock()
@@ -27,15 +34,8 @@ def _clear_gallery_caches() -> None:
     _reference_images_cache = {}
 
 
-def _get_runs_dir() -> Path | None:
+def _get_runs_dir() -> Path:
     return gallery_config.get_runs_dir()
-
-
-def _require_runs_dir():
-    runs_dir = _get_runs_dir()
-    if runs_dir is None:
-        return None, (jsonify({"error": "Runs directory has not been configured"}), 503)
-    return runs_dir, None
 
 
 def load_json(path: Path) -> Dict[str, Any]:
@@ -324,34 +324,40 @@ def stars_view():
 def api_config():
     """Provide frontend configuration, including the runs directory path."""
     runs_dir = _get_runs_dir()
+    is_default = runs_dir == gallery_config.DEFAULT_RUNS_DIR
     return jsonify({
-        "configured": runs_dir is not None,
         "runs_dir": gallery_config.get_runs_dir_relative_to_static(),
-        "runs_dir_name": runs_dir.name if runs_dir is not None else "",
-        "runs_dir_absolute": str(runs_dir.absolute()) if runs_dir is not None else "",
-        "runs_dir_input": gallery_config.get_saved_runs_dir_name() or "",
+        "runs_dir_name": runs_dir.name,
+        "runs_dir_absolute": str(runs_dir.absolute()),
+        "runs_dir_input": gallery_config.get_saved_runs_dir_name() or str(gallery_config.DEFAULT_RUNS_DIR),
+        "is_default": is_default,
+        "default_runs_dir": str(gallery_config.DEFAULT_RUNS_DIR),
     })
 
 
 @app.route('/api/config', methods=['POST'])
 def api_config_update():
     body = request.get_json(force=True, silent=True) or {}
-    runs_dir_value = body.get('runs_dir')
-    if not isinstance(runs_dir_value, str) or not runs_dir_value.strip():
-        return jsonify({"error": "Missing runs_dir"}), 400
+    runs_dir_value = body.get('runs_dir', '')
+    reset = body.get('reset', False)
+
+    if reset:
+        runs_dir_value = ""
 
     try:
-        resolved = gallery_config.set_runs_dir_name(runs_dir_value)
+        resolved = gallery_config.set_runs_dir_name(str(runs_dir_value))
     except (FileNotFoundError, NotADirectoryError, ValueError) as e:
         return jsonify({"error": str(e)}), 400
 
     _clear_gallery_caches()
+    is_default = resolved == gallery_config.DEFAULT_RUNS_DIR
     return jsonify({
-        "configured": True,
         "runs_dir": gallery_config.get_runs_dir_relative_to_static(),
         "runs_dir_name": resolved.name,
         "runs_dir_absolute": str(resolved.absolute()),
-        "runs_dir_input": runs_dir_value.strip(),
+        "runs_dir_input": gallery_config.get_saved_runs_dir_name() or str(gallery_config.DEFAULT_RUNS_DIR),
+        "is_default": is_default,
+        "default_runs_dir": str(gallery_config.DEFAULT_RUNS_DIR),
     })
 
 
@@ -372,9 +378,7 @@ def api_gallery():
     include_first = str(include_first_param).lower() in {'1','true','yes','on'}
     if not scene:
         return jsonify({"error": "Missing scene"}), 400
-    runs_dir, error = _require_runs_dir()
-    if error:
-        return error
+    runs_dir = _get_runs_dir()
     # Empty target_prompt means "all prompts"
     # Empty loss_model means "all loss models"
     # Empty reference_image means "all reference images"
@@ -431,9 +435,7 @@ def api_reference_images():
 
 @app.route('/api/metadata')
 def api_metadata():
-    runs_dir, error = _require_runs_dir()
-    if error:
-        return error
+    runs_dir = _get_runs_dir()
     image_id = request.args.get('id')  # format: run_dir/filename or subdir/run_dir/filename
     if not image_id or '/' not in image_id:
         return jsonify({"error": "Invalid id"}), 400
@@ -505,9 +507,6 @@ def api_reference_image():
     path_str = request.args.get('path')
     thumb_param = request.args.get('thumb', '0')
     thumb = str(thumb_param).lower() in {'1', 'true', 'yes', 'on'}
-    _, error = _require_runs_dir()
-    if error:
-        return error
 
     try:
         img_path = _safe_resolve_reference_image(path_str)
@@ -564,26 +563,17 @@ def _handle_toggle_list(list_path: Path):
 
 @app.route('/api/hearts', methods=['GET', 'POST', 'DELETE'])
 def api_hearts():
-    return _handle_toggle_list(FAVORITES_FILE)
+    return _handle_toggle_list(gallery_config.FAVORITES_FILE)
 
 
 @app.route('/api/stars', methods=['GET', 'POST', 'DELETE'])
 def api_stars():
-    return _handle_toggle_list(STARS_FILE)
-
-
-@app.route('/api/favorites', methods=['GET', 'POST', 'DELETE'])
-def api_favorites():
-    """Compatibility alias: /api/favorites now maps to the hearts list."""
-    return _handle_toggle_list(FAVORITES_FILE)
+    return _handle_toggle_list(gallery_config.STARS_FILE)
 
 
 @app.route('/image/<path:subpath>')
 def serve_image(subpath):
-    # subpath should be relative path from RUNS_DIR
     runs_dir = _get_runs_dir()
-    if runs_dir is None:
-        return jsonify({"error": "Runs directory has not been configured"}), 503
     img_path = runs_dir / subpath
     if not img_path.exists() or img_path.suffix.lower() not in gallery_config.IMAGE_EXTENSIONS:
         abort(404)

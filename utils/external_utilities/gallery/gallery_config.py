@@ -10,14 +10,16 @@ from typing import Any
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parents[2]
 
+# Default runs directory matches the default output folder of the example notebooks
+DEFAULT_RUNS_DIR = REPO_ROOT / "OPTIMIZATION_RUNS"
+
 # Persist the selected runs directory so it survives between sessions.
 SETTINGS_FILE = BASE_DIR / "gallery_settings.json"
 
-# Favorites file location
-# NOTE: favorites.json is now treated as the "hearts" list (pretty images).
+# Favorites file location (hearts list - pretty images)
 FAVORITES_FILE = BASE_DIR / "favorites.json"
 
-# Stars file location (prompt/image matches)
+# Stars file location (stars list - prompt/image matches)
 STARS_FILE = BASE_DIR / "stars.json"
 
 # Image extensions to recognize
@@ -59,18 +61,25 @@ def get_saved_runs_dir_name() -> str | None:
     return None
 
 
-def get_runs_dir() -> Path | None:
+def get_runs_dir() -> Path:
+    global RUNS_DIR
+    if RUNS_DIR is None:
+        refresh_runs_dir_from_settings()
+    assert RUNS_DIR is not None
     return RUNS_DIR
-
-
-def is_configured() -> bool:
-    return RUNS_DIR is not None
 
 
 def set_runs_dir_name(value: str) -> Path:
     cleaned = value.strip()
-    if not cleaned:
-        raise ValueError("Runs directory cannot be empty")
+    global RUNS_DIR_NAME, RUNS_DIR
+
+    # If empty or explicitly "default", reset to DEFAULT_RUNS_DIR
+    if not cleaned or cleaned.lower() == "default":
+        DEFAULT_RUNS_DIR.mkdir(parents=True, exist_ok=True)
+        _save_settings({})
+        RUNS_DIR_NAME = str(DEFAULT_RUNS_DIR)
+        RUNS_DIR = DEFAULT_RUNS_DIR
+        return DEFAULT_RUNS_DIR
 
     resolved = _resolve_runs_dir(cleaned)
     if not resolved.exists():
@@ -79,56 +88,52 @@ def set_runs_dir_name(value: str) -> Path:
         raise NotADirectoryError(f"Runs directory is not a directory: {cleaned}")
 
     _save_settings({"runs_dir": cleaned})
-
-    global RUNS_DIR_NAME, RUNS_DIR
     RUNS_DIR_NAME = cleaned
     RUNS_DIR = resolved
     return resolved
 
 
-def refresh_runs_dir_from_settings() -> Path | None:
+def reset_to_default_runs_dir() -> Path:
+    return set_runs_dir_name("")
+
+
+def refresh_runs_dir_from_settings() -> Path:
     global RUNS_DIR_NAME, RUNS_DIR
     saved = get_saved_runs_dir_name()
-    if not saved:
-        RUNS_DIR_NAME = None
-        RUNS_DIR = None
-        return None
 
-    try:
-        resolved = _resolve_runs_dir(saved)
-    except Exception:
-        RUNS_DIR_NAME = saved
-        RUNS_DIR = None
-        return None
+    if saved:
+        try:
+            resolved = _resolve_runs_dir(saved)
+            if resolved.exists() and resolved.is_dir():
+                RUNS_DIR_NAME = saved
+                RUNS_DIR = resolved
+                return resolved
+        except Exception:
+            pass
 
-    if not resolved.exists() or not resolved.is_dir():
-        RUNS_DIR_NAME = saved
-        RUNS_DIR = None
-        return None
-
-    RUNS_DIR_NAME = saved
-    RUNS_DIR = resolved
-    return resolved
+    # Fallback to DEFAULT_RUNS_DIR
+    DEFAULT_RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    RUNS_DIR_NAME = str(DEFAULT_RUNS_DIR)
+    RUNS_DIR = DEFAULT_RUNS_DIR
+    return DEFAULT_RUNS_DIR
 
 
+# Initialize on load
 refresh_runs_dir_from_settings()
 
 
 def get_runs_dir_relative_to_static() -> str:
     """
     Get the runs directory path relative to the static folder for frontend use.
-    This returns a relative path for use in JavaScript/HTML.
     """
-    if RUNS_DIR is None:
-        return ""
-
+    runs_dir = get_runs_dir()
     try:
         static_dir = BASE_DIR / "static"
-        rel_path = Path(os.path.relpath(RUNS_DIR, static_dir))
+        rel_path = Path(os.path.relpath(runs_dir, static_dir))
         return str(rel_path).replace("\\", "/")
     except Exception:
         try:
-            rel_path = os.path.relpath(RUNS_DIR, BASE_DIR / "static")
+            rel_path = os.path.relpath(runs_dir, BASE_DIR / "static")
             return rel_path.replace(os.sep, "/")
         except ValueError:
-            return str(RUNS_DIR)
+            return str(runs_dir)

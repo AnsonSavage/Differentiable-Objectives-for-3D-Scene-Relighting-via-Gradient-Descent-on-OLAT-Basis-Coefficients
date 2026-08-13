@@ -9,7 +9,7 @@ This repository contains the source code for the 2026 Eurographics Short Paper, 
 - `losses/` - Loss function objectives (CLIP, SSIM, LPIPS, Aesthetic, etc.)
 - `utils/` - Core utility modules (optimization, color conversion, record keeping, etc.) 
   - `external_utilities/` - Standalone tools and helper applications
-    - `gallery/`: Web-based Flask gallery application for browsing, filtering, and curating optimization run images (`gallery_app.py`, `collect_favorites.py`, `templates/`, `static/`). See [`utils/external_utilities/gallery/README.md`](utils/external_utilities/gallery/README.md) for detailed documentation on how to run it.
+    - `gallery/`: Web-based Flask gallery application for browsing, filtering, and curating optimization run images (`gallery_app.py`, `templates/`, `static/`). See [`utils/external_utilities/gallery/README.md`](utils/external_utilities/gallery/README.md) for detailed documentation on how to run it.
     - `blender_utils/`: Blender rendering utilities and add-ons (`olat_render_addon.py`) for generating OLAT datasets from 3D scenes.
 - `config.py` - Global project configuration settings (including the local directories where optimization results are stored and where model weights are downloaded)
 

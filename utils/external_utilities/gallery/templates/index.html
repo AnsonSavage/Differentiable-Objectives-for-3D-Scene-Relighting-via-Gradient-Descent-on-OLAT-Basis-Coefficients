@@ -9,6 +9,7 @@
   <header>
     <h1>Gallery</h1>
     <nav>
+      <span id="current-runs-dir-label" style="font-size:0.85rem; color:#aaa;"></span>
       <button type="button" id="change-runs-dir-btn">Change runs directory</button>
       <a href="/favorites">Hearts</a>
       <a href="/stars">Stars</a>
@@ -88,8 +89,12 @@
       <form id="runs-dir-form">
         <label for="runs-dir-input">Runs directory</label>
         <input id="runs-dir-input" name="runs_dir" type="text" autocomplete="off" spellcheck="false" placeholder="/path/to/runs" />
-        <div class="startup-actions">
-          <button type="submit">Save and continue</button>
+        <div class="startup-actions" style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem;">
+          <button type="button" id="runs-dir-reset-btn" style="background:#2a2a2a; color:#ccc;">Reset to Default</button>
+          <div style="display:flex; gap:0.5rem;">
+            <button type="button" id="runs-dir-cancel-btn" style="background:#333;">Cancel</button>
+            <button type="submit">Save and continue</button>
+          </div>
         </div>
       </form>
       <p id="runs-dir-error" class="startup-error" aria-live="polite"></p>
