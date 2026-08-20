@@ -1,7 +1,7 @@
 """Test 01: Aesthetic Score Optimization (aesthetic_score_example.ipynb)."""
-from __future__ import annotations
 
 import unittest
+
 from losses.aesthetic import AestheticLossMaximize, LAIONAestheticScorer
 from tests.common import BaseWorkflowTest
 from utils.optimize import optimize_with_criterion

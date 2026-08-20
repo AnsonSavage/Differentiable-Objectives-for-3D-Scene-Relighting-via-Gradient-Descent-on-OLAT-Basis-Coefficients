@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 import torch
+
+from utils.color.linear_to_srgb_converters import (
+    LinearRec709ToAgXBase,
+    LinearRec709TosRGB,
+)
 from utils.scene import Scene
-from utils.color.linear_to_srgb_converters import LinearRec709TosRGB, LinearRec709ToAgXBase
 
 
 class DummyScene(Scene):

@@ -1,6 +1,7 @@
 """
 Experiment management utilities for tracking and visualizing optimization runs.
 """
+from __future__ import annotations
 
 import json
 import os

@@ -1,7 +1,6 @@
 """
 CLIP-based loss functions for image relighting with text guidance.
 """
-from __future__ import annotations
 
 import torch
 

@@ -4,7 +4,6 @@ Parameter strategies for handling RGB vs HSV parameter spaces during optimizatio
 This module implements the Strategy pattern to eliminate conditional logic
 for different parameter representations (RGB vs HSV).
 """
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

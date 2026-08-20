@@ -1,6 +1,7 @@
 """
 Aesthetic-based losses for image lighting optimization.
 """
+
 import os
 from abc import abstractmethod
 from urllib.request import urlretrieve

@@ -1,8 +1,9 @@
 """Test 04: Image Perceptual Losses (image_perceptual_example.ipynb)."""
-from __future__ import annotations
 
 import unittest
+
 import torch
+
 from losses.image_image import LPIPSLoss, SSIMLoss, VGGStyleTransferLoss
 from tests.common import BaseWorkflowTest
 from utils.optimize import optimize_with_criterion

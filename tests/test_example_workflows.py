@@ -1,7 +1,7 @@
 """Aggregated test case combining all 8 workflow test classes for unittest discovery."""
-from __future__ import annotations
 
 import unittest
+
 from tests.test_01_aesthetic_score import Test01AestheticScore
 from tests.test_02_flux_relight import Test02FluxRelight
 from tests.test_03_image_clip_cosine import Test03ImageCLIPCosine

@@ -1,6 +1,10 @@
+
 from abc import ABC, abstractmethod
+
 import torch
+
 from utils.color.tonemapping.agx_utils import applyLookPunchyTorch
+
 
 class AgXLook(ABC):
     """Abstract base class for AgX look modifications."""
