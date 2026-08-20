@@ -85,14 +85,14 @@ class BaseWorkflowTest(unittest.TestCase):
         """Helper to get either a real OLAT scene or a fast in-memory DummyScene."""
         if self.use_real_olats:
             from examples import example_scenes
+
             scene_cls = getattr(example_scenes, f"{scene_name}Scene", None)
-            if scene_cls is not None:
-                try:
-                    if "include_alpha_mask" in scene_cls.__init__.__code__.co_varnames:
-                        return scene_cls(include_alpha_mask=has_alpha, device=self.device)
-                    return scene_cls(device=self.device)
-                except Exception as e:
-                    print(f"Warning: Failed to instantiate real scene {scene_name} ({e}). Falling back to DummyScene.")
+            if scene_cls is None:
+                raise AttributeError(f"Scene class '{scene_name}Scene' not found in examples.example_scenes")
+
+            if "include_alpha_mask" in scene_cls.__init__.__code__.co_varnames:
+                return scene_cls(include_alpha_mask=has_alpha, device=self.device)
+            return scene_cls(device=self.device)
 
         return DummyScene(
             num_lights=num_lights,
