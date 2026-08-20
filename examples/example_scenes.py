@@ -1,3 +1,4 @@
+
 from pathlib import Path
 
 from utils.scene import MultiLayerEXRScene, OLATDirScene
@@ -21,7 +22,7 @@ class OlatCacheManager:
             return
         OlatCacheManager._download_attempted = True
 
-        from huggingface_hub import list_bucket_tree, download_bucket_files
+        from huggingface_hub import download_bucket_files, list_bucket_tree
 
         file_pairs = []
         items = list_bucket_tree(HF_BUCKET_ID, prefix=PREFIX)

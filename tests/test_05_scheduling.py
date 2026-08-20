@@ -1,7 +1,7 @@
 """Test 05: Scheduling & Parameter Constraints (scheduling_example.ipynb)."""
-from __future__ import annotations
 
 import unittest
+
 import torch
 from torchvision.transforms.v2 import Identity, RandomChoice, RandomResizedCrop
 

@@ -3,7 +3,6 @@
 This module provides tensor and numpy implementations for converting
 linear Rec.709 RGB to sRGB.
 """
-from __future__ import annotations
 
 import numpy as np
 import torch

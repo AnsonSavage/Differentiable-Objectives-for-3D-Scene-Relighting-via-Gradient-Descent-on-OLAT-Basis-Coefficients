@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 import os
 import re
@@ -6,8 +7,9 @@ import sys
 import threading
 from io import BytesIO
 from pathlib import Path
-from typing import List, Dict, Any, Set
-from flask import Flask, jsonify, send_file, request, render_template, abort
+from typing import Any, Dict, List, Set
+
+from flask import Flask, abort, jsonify, render_template, request, send_file
 
 # Ensure local gallery directory can be imported reliably
 _gallery_dir = Path(__file__).resolve().parent

@@ -1,7 +1,9 @@
-import bpy
-import os
+
 import json
+import os
 import re
+
+import bpy
 
 bl_info = {
     "name": "OLAT Render Tools",

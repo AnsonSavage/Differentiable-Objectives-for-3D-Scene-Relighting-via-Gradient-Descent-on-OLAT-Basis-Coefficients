@@ -1,7 +1,7 @@
 """Test 06: Text CLIP Cosine & Directional Similarity (text_clip_cosine_similarity_example.ipynb)."""
-from __future__ import annotations
 
 import unittest
+
 from torchvision.transforms.v2 import RandomChoice, RandomResizedCrop
 
 from losses.clip_like import CLIPCosineSimilarity, CLIPDirectionalCosineSimilarity

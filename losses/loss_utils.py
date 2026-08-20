@@ -1,3 +1,4 @@
+
 def compute_cosine_distance(static_embedding, dynamic_embedding, is_static_embedding_prenormalized=True):
     """ Compute the cosine distance between two sets of embeddings.
     

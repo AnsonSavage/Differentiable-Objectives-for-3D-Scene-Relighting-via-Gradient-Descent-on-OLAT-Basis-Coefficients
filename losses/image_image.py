@@ -3,6 +3,7 @@ Image-to-image losses for image optimization (MSE, SSIM, etc).
 
 Note that all color space conversions (e.g., linear->sRGB) must be handled by the caller.
 """
+
 import sys
 from abc import ABC, abstractmethod
 
@@ -11,10 +12,10 @@ import torchvision.transforms.functional as F
 from PIL import Image
 from torch import nn
 
-from utils.image.image import resize_then_crop
-from utils.image.preprocess_utils import preprocess_image_input
 from losses.base import BaseLoss
 from losses.loss_utils import compute_cosine_distance
+from utils.image.image import resize_then_crop
+from utils.image.preprocess_utils import preprocess_image_input
 
 
 # CLASSES

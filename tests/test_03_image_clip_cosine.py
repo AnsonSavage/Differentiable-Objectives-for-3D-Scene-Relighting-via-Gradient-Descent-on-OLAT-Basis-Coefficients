@@ -1,8 +1,9 @@
 """Test 03: Image CLIP Embedding Cosine Similarity (image_clip_cosine_example.ipynb)."""
-from __future__ import annotations
 
 import unittest
+
 import torch
+
 from losses.image_image import ImageImageCLIPLoss
 from tests.common import BaseWorkflowTest
 from utils.model.model_utils import create_clip_model_and_tokenizer

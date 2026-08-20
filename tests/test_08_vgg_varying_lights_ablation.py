@@ -1,8 +1,9 @@
 """Test 08: VGG Varying Light Rigs Ablation (vgg_varying_lights_ablation.ipynb)."""
-from __future__ import annotations
 
 import unittest
+
 import torch
+
 from losses.image_image import VGGStyleTransferLoss
 from tests.common import BaseWorkflowTest
 from tests.dummy_scene import DummyScene

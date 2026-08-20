@@ -14,7 +14,6 @@ Usage:
     python tests/run_tests.py --device cpu         # Force CPU execution
     python tests/run_tests.py --real-olats         # Use real OLAT scenes
 """
-from __future__ import annotations
 
 import sys
 from pathlib import Path

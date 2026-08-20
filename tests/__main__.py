@@ -1,5 +1,4 @@
 """CLI entry point for running tests via `python -m tests`."""
-from __future__ import annotations
 
 import argparse
 import sys

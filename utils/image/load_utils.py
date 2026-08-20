@@ -9,6 +9,7 @@ Provides:
 Returned image tensors use channel-last layout (H, W, C) and stacks of lights
 use (N, H, W, C).
 """
+from __future__ import annotations
 
 import glob
 import os

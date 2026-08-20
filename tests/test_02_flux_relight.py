@@ -1,8 +1,9 @@
 """Test 02: Flux Diffusion Relighting (flux_relight_example.ipynb)."""
-from __future__ import annotations
 
 import unittest
+
 import torch
+
 from losses.flux_relight_loss import FLUXKontextRelighter, FluxLoss, RelightImageCache
 from losses.image_image import MSELossWithReferenceImage
 from tests.common import BaseWorkflowTest, MockFluxRelighter

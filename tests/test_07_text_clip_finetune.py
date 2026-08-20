@@ -1,7 +1,7 @@
 """Test 07: Text CLIP Fine-tuned vs Standard Weights (text_clip_finetune_example.ipynb)."""
-from __future__ import annotations
 
 import unittest
+
 from torchvision.transforms.v2 import RandomChoice, RandomResizedCrop
 
 from losses.clip_like import CLIPDirectionalCosineSimilarity

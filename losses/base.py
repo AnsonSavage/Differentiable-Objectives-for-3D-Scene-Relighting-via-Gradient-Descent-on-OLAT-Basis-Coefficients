@@ -1,6 +1,7 @@
 """
 Base classes for loss functions used in image optimization.
 """
+
 from abc import ABC, abstractmethod
 
 from torch import nn

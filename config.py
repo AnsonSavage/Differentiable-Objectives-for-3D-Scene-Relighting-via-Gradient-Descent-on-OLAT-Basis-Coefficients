@@ -1,5 +1,6 @@
 """Global project configuration settings."""
 
+
 import os
 from pathlib import Path
 
