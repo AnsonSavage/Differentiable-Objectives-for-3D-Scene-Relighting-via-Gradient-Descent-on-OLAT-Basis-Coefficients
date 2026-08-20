@@ -345,7 +345,7 @@ def optimize_with_criterion(
             break
 
     # Save final results
-    plot_manager.save_loss_plot(loss_values)
+    plot_manager.save_loss_plot(loss_values, show_plot=show_images)
     
     # Save final multipliers as a torch tensor
     if folder_manager.run_dir:

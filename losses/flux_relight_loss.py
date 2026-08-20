@@ -166,7 +166,16 @@ class RelightImageCache():
         return self.cache[key]
 
 class FluxLoss(BaseLoss):
-    def __init__(self, cache: RelightImageCache, target_text: str, image_comparison_criterion_cls: type[ImageImageLoss], num_relighted_images: int = 1, save_dir: str | None = None, display=False):
+    def __init__(
+        self,
+        cache: RelightImageCache,
+        target_text: str,
+        image_comparison_criterion_cls: type[ImageImageLoss],
+        num_relighted_images: int = 1,
+        save_dir: str | None = None,
+        display: bool = False,
+        device: str | None = None,
+    ):
         super().__init__()
         # Defer relighting until we can link to the run directory
         self.images_cache = cache
@@ -174,6 +183,7 @@ class FluxLoss(BaseLoss):
         self.num_relighted_images = num_relighted_images
         self._pending_save_dir = save_dir  # If provided, use it; otherwise may be set later by the trainer
         self.relit_image: torch.Tensor | None = None
+        self.device = device or getattr(cache.relighter, "device", "cuda" if torch.cuda.is_available() else "cpu")
 
         if not isinstance(image_comparison_criterion_cls, type):
             raise TypeError("image_comparison_criterion_cls must be a class (subclass of ImageImageLoss), not an instance")
@@ -199,8 +209,11 @@ class FluxLoss(BaseLoss):
                 save_dir=self._pending_save_dir,
                 display=self._pending_save_dir is None
             )
-            # Instantiate the provided loss class with the reference image
-            self.image_comparison_criterion = self.image_comparison_criterion_type(reference_image=self.relit_image)
+            # Instantiate the provided loss class with the reference image and device
+            self.image_comparison_criterion = self.image_comparison_criterion_type(
+                reference_image=self.relit_image,
+                device=self.device,
+            )
 
     def on_run_dir_created(self, run_dir: str):
         """Hook called by the optimization loop to link this loss's save dir to the run folder."""
@@ -214,5 +227,5 @@ class FluxLoss(BaseLoss):
     def get_prompt_info(self):
         return {
             'target_text': self.target_text,
-            'flux_seed': self.images_cache.relighter.seed
+            'flux_seed': getattr(self.images_cache.relighter, 'seed', None)
         }
