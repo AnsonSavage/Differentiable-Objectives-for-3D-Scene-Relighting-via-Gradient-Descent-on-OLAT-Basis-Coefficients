@@ -1,4 +1,6 @@
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from utils.scene import MultiLayerEXRScene, OLATDirScene
@@ -6,53 +8,71 @@ from utils.scene import MultiLayerEXRScene, OLATDirScene
 BASE_DIR = Path(__file__).resolve().parent
 LOCAL_EXAMPLE_OLATS_DIR = BASE_DIR / "EXAMPLE_OLATS"
 HF_BUCKET_ID = "AnsonSavage/DemoOLATScenes"
-PREFIX = "EXAMPLE_OLATS"
+
 
 class OlatCacheManager:
-    _download_attempted = False
+    @staticmethod
+    def _is_available(path: Path) -> bool:
+        if not path.exists():
+            return False
+        if path.is_file():
+            return path.stat().st_size > 0
+        return any(path.iterdir())
 
     @staticmethod
-    def _has_any_files(directory: Path) -> bool:
-        return directory.exists() and any(directory.iterdir())
+    def _download_scene_from_hf(pattern: str) -> None:
+        import shutil
 
+        from huggingface_hub import snapshot_download
 
-    @staticmethod
-    def _download_example_olats_from_hf() -> None:
-        if OlatCacheManager._download_attempted or OlatCacheManager._has_any_files(LOCAL_EXAMPLE_OLATS_DIR):
-            return
-        OlatCacheManager._download_attempted = True
-
-        from huggingface_hub import download_bucket_files, list_bucket_tree
-
-        file_pairs = []
-        items = list_bucket_tree(HF_BUCKET_ID, prefix=PREFIX)
-        for item in items:
-            if item.type == "file":
-                remote_path = item.path
-                local_path = BASE_DIR / remote_path  # All the files we're getting are already prefixed with "EXAMPLE_OLATS/"
-                file_pairs.append((remote_path, local_path))
-
-        download_bucket_files(HF_BUCKET_ID, files=file_pairs)
-
-
-    @staticmethod
-    def _ensure_example_olats_available() -> None:
-        if OlatCacheManager._has_any_files(LOCAL_EXAMPLE_OLATS_DIR):
-            return
         try:
-            OlatCacheManager._download_example_olats_from_hf()
-        except (ImportError, FileNotFoundError):
-            raise FileNotFoundError(
-                "Could not find example_olats locally and failed to download them from Hugging Face."
+            snapshot_download(
+                repo_id=HF_BUCKET_ID,
+                repo_type="dataset",
+                allow_patterns=[f"example_olats/{pattern}"],
+                local_dir=str(BASE_DIR),
             )
+            lower_dir = BASE_DIR / "example_olats"
+            if lower_dir.exists():
+                for item in lower_dir.rglob("*"):
+                    if item.is_file():
+                        rel = item.relative_to(lower_dir)
+                        dest = LOCAL_EXAMPLE_OLATS_DIR / rel
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(item), str(dest))
+                shutil.rmtree(str(lower_dir), ignore_errors=True)
+        except Exception as e:
+            raise FileNotFoundError(
+                f"Could not download scene files for '{pattern}' from Hugging Face ({HF_BUCKET_ID}): {e}"
+            ) from e
 
-def _scene_config_dir(scene_kind: str, scene_name: str, configuration: str = "standard") -> str:
-    OlatCacheManager._ensure_example_olats_available()
-    return str(LOCAL_EXAMPLE_OLATS_DIR / scene_kind / scene_name / configuration)
+    @staticmethod
+    def resolve_scene_dir(scene_kind: str, scene_name: str, configuration: str | None = None) -> str:
+        subpath = f"{scene_kind}/{scene_name}/{configuration}" if configuration else f"{scene_kind}/{scene_name}"
+        target_path = LOCAL_EXAMPLE_OLATS_DIR / subpath
+
+        if not OlatCacheManager._is_available(target_path):
+            OlatCacheManager._download_scene_from_hf(f"{subpath}/*")
+
+        return str(target_path)
+
+    @staticmethod
+    def resolve_scene_file(scene_kind: str, scene_name: str, configuration: str, filename: str) -> str:
+        subpath = f"{scene_kind}/{scene_name}/{configuration}/{filename}"
+        target_path = LOCAL_EXAMPLE_OLATS_DIR / subpath
+
+        if not OlatCacheManager._is_available(target_path):
+            OlatCacheManager._download_scene_from_hf(subpath)
+
+        return str(target_path)
+
+
+def _scene_config_dir(scene_kind: str, scene_name: str, configuration: str | None = None) -> str:
+    return OlatCacheManager.resolve_scene_dir(scene_kind, scene_name, configuration)
+
 
 def _scene_multilayer_file(scene_name: str, configuration: str, filename: str) -> str:
-    OlatCacheManager._ensure_example_olats_available()
-    return str(LOCAL_EXAMPLE_OLATS_DIR / "multilayer" / scene_name / configuration / filename)
+    return OlatCacheManager.resolve_scene_file("multilayer", scene_name, configuration, filename)
 
 
 class SpringScene(MultiLayerEXRScene):
