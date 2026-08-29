@@ -1,12 +1,4 @@
-"""
-Utilities for serializing and managing configuration settings.
-
-This module provides:
-- to_serializable: recursively converts Python objects into JSON-serializable
-  structures with sensible representations for tensors, torch devices/dtypes,
-  torchvision v2 transforms (including Compose), and common Python objects.
-- get_fully_qualified_class_name: fully qualified class name for instances or types.
-"""
+"""Serialization utilities for saving optimization hyperparameters and objects to JSON."""
 from __future__ import annotations
 
 import inspect
@@ -18,24 +10,28 @@ from torchvision.transforms import v2 as T_v2
 
 
 def get_fully_qualified_class_name(obj_or_type: Any) -> str:
-    """Return fully-qualified class name for an object or a type.
+    """Return the fully qualified import name for a class or instance.
 
-    Example: torchvision.transforms.v2.RandomAffine
+    Args:
+        obj_or_type: Class type or instantiated object.
+
+    Returns:
+        String module and class name (e.g. 'torchvision.transforms.v2.RandomAffine').
     """
     typ = obj_or_type if inspect.isclass(obj_or_type) else obj_or_type.__class__
     return f"{typ.__module__}.{typ.__name__}"
 
 
 def _is_torchvision_v2_transform(obj: Any) -> bool:
+    """Check whether an object is an instance of a torchvision v2 Transform."""
     try:
-        # v2 exposes a base class Transform
         return isinstance(obj, T_v2.Transform)
     except Exception:
-        # Fallback to module check
         return getattr(obj.__class__, "__module__", "").startswith("torchvision.transforms.v2")
 
 
 def _tensor_summary(t: Any, max_numel: int = 1000) -> Any:
+    """Build a JSON-serializable dictionary summary of a PyTorch tensor."""
     if torch is None:
         return str(t)
     info = {
@@ -53,14 +49,9 @@ def _tensor_summary(t: Any, max_numel: int = 1000) -> Any:
 
 
 def _serialize_transform(transform: Any) -> dict[str, Any]:
-    """Serialize a torchvision v2 transform (including Compose) into a dict.
-
-    Tries to extract relevant constructor/attribute parameters when possible and
-    falls back to repr(). Supports nested Compose recursively.
-    """
+    """Serialize a torchvision v2 transform into a JSON-compatible dictionary."""
     result: dict[str, Any] = {"_type": get_fully_qualified_class_name(transform)}
 
-    # Handle Compose-like containers by looking for a list/tuple of inner transforms
     inner = None
     for attr in ("transforms", "_transforms", "ops"):
         if hasattr(transform, attr):
@@ -69,9 +60,11 @@ def _serialize_transform(transform: Any) -> dict[str, Any]:
                 inner = val
                 break
     if inner is not None:
-        result["transforms"] = [_serialize_transform(t) if _is_torchvision_v2_transform(t) else {"_type": get_fully_qualified_class_name(t), "repr": repr(t)} for t in inner]
+        result["transforms"] = [
+            _serialize_transform(t) if _is_torchvision_v2_transform(t) else {"_type": get_fully_qualified_class_name(t), "repr": repr(t)}
+            for t in inner
+        ]
 
-    # Capture public attributes as params, filtering out callables/modules
     try:
         attrs = {k: v for k, v in vars(transform).items() if not k.startswith("_")}
     except TypeError:
@@ -83,27 +76,23 @@ def _serialize_transform(transform: Any) -> dict[str, Any]:
     if params:
         result["params"] = params
     else:
-        # Fallback to repr if no public params found
         result["repr"] = repr(transform)
 
     return result
 
 
 def to_serializable(obj: Any) -> Any:
-    """Recursively convert object to something JSON-serializable.
+    """Recursively convert an arbitrary Python object into JSON-serializable structures.
 
-    Special handling for:
-    - torch.Tensor
-    - torch.device, torch.dtype
-    - torchvision v2 transforms (including Compose)
-    - dicts, lists, tuples, sets
-    - callables and classes (represented by fully-qualified names)
+    Args:
+        obj: Python object to convert.
+
+    Returns:
+        JSON-compatible primitive (dict, list, string, number, bool, or None).
     """
-    # Basic types
     if obj is None or isinstance(obj, (bool, int, float, str)):
         return obj
 
-    # torch-specific types
     if torch is not None:
         if isinstance(obj, torch.Tensor):
             return _tensor_summary(obj)
@@ -112,48 +101,38 @@ def to_serializable(obj: Any) -> Any:
         if isinstance(obj, torch.dtype):
             return {"_type": "torch.dtype", "value": str(obj)}
 
-    # torchvision v2 transforms
     if _is_torchvision_v2_transform(obj):
         return _serialize_transform(obj)
 
-    # dict-like
     if isinstance(obj, dict):
         return {str(k): to_serializable(v) for k, v in obj.items()}
 
-    # list/tuple/set
     if isinstance(obj, (list, tuple, set)):
         seq = list(obj)
         return [to_serializable(v) for v in seq]
 
-    # callable or class
     if inspect.isclass(obj) or callable(obj):
         try:
             result = {"_type": "callable", "name": get_fully_qualified_class_name(obj)}
-            # Try to get the source code
             try:
                 source = inspect.getsource(obj)
                 result["source"] = source
             except (OSError, TypeError):
-                # Source not available (built-in, C extension, or dynamically created)
                 pass
-            # Try to get the signature
             try:
                 sig = inspect.signature(obj)
                 result["signature"] = str(sig)
             except (ValueError, TypeError):
-                # Signature not available
                 pass
             return result
         except Exception:
             return str(obj)
 
-    # objects with __dict__
     try:
         return {"_type": get_fully_qualified_class_name(obj), "state": {k: to_serializable(v) for k, v in vars(obj).items() if not k.startswith("_")}}
     except Exception:
-        # Fallback to string representation
         try:
-            json.dumps(obj)  # type: ignore
+            json.dumps(obj)
             return obj
         except Exception:
             return str(obj)

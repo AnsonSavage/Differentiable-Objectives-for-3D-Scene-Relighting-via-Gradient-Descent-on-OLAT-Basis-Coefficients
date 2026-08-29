@@ -1,6 +1,4 @@
-
-from __future__ import annotations
-
+"""Model loading utilities for vision and multimodal architectures (ViT, OpenCLIP)."""
 import os
 import time
 from collections.abc import Sequence
@@ -28,11 +26,13 @@ HF_FINE_TUNED_REPO = "AnsonSavage/FineTunedOpenCLIPModelsForRelightingLossEvalua
 
 
 def get_model_weights_path(filename_or_path: str) -> str:
-    """Get the path to a model weights file.
+    """Get the filesystem path to a model weights file, downloading from HF if needed.
 
-    If the file exists locally (either as a direct path or inside MODEL_WEIGHTS_DIR),
-    returns it immediately. Otherwise, downloads it automatically from Hugging Face
-    (AnsonSavage/FineTunedOpenCLIPModelsForRelightingLossEvaluation) and caches it.
+    Args:
+        filename_or_path: Local file path or filename in the Hugging Face weights repository.
+
+    Returns:
+        Absolute or resolved local path to the weights file.
     """
     if os.path.exists(filename_or_path):
         return filename_or_path
@@ -50,8 +50,18 @@ def get_model_weights_path(filename_or_path: str) -> str:
         filename=filename_or_path,
         local_dir=MODEL_WEIGHTS_DIR,
     )
+
+
 def infer_head_layers(state_dict: dict, prefix: str) -> list[int] | None:
-    """Infer MLP projection head layer dimensions from a saved state_dict."""
+    """Infer MLP projection head layer dimensions from a saved state_dict.
+
+    Args:
+        state_dict: PyTorch checkpoint state dict.
+        prefix: Submodule prefix (e.g., 'image_projection' or 'text_projection').
+
+    Returns:
+        List of layer integer dimensions, or None if no projection keys exist.
+    """
     proj_keys = [k for k in state_dict if k.startswith(f"{prefix}.")]
     if not proj_keys:
         return None
@@ -79,18 +89,21 @@ def create_vision_only_model(
     projection_activation: type[torch.nn.Module] = torch.nn.ReLU,
     fine_tune: str | None = None,
 ) -> tuple[torch.nn.Module, Any]:
-    """Create a vision-only ViT model (no text encoder or tokenizer).
+    """Create a vision-only ViT model without text encoder or tokenizer.
 
     Args:
-        model_name: Architecture name from _VIT_REGISTRY (e.g., "vit_b_16").
+        model_name: Architecture name from _VIT_REGISTRY (e.g. 'vit_b_16').
         device: PyTorch device.
         pretrained: If True, load ImageNet pretrained weights.
-        image_head_layers: Optional projection head layer sizes (e.g., [768, 256, 64]).
-        projection_activation: Activation function for projection head.
-        fine_tune: Optional fine-tuned weights file or checkpoint path.
+        image_head_layers: Optional projection head layer sizes (e.g. [768, 256, 64]).
+        projection_activation: Activation class for MLP projection layers.
+        fine_tune: Optional fine-tuned weights file or checkpoint name.
 
     Returns:
-        (model, preprocess_transform)
+        Tuple of (model, preprocess_transform).
+
+    Raises:
+        ValueError: If model_name is not registered in _VIT_REGISTRY.
     """
     loading_time_start = time.time()
     print(f"Loading vision-only model {model_name} (pretrained={pretrained})...")
@@ -152,20 +165,19 @@ def create_clip_model_and_tokenizer(
     projection_activation: type[torch.nn.Module] = torch.nn.ReLU,
     fine_tune: str | None = None,
 ) -> tuple[torch.nn.Module, Any, Any]:
-    """Create a combined vision and text OpenCLIP model with tokenizer.
+    """Create an OpenCLIP vision/text model with tokenizer and transforms.
 
     Args:
-        model_name: Architecture name (e.g., "ViT-B-16-SigLIP-512").
-        device: PyTorch device.
-        pretrained: OpenCLIP pretrained dataset name (e.g., "webli").
-        image_head_layers: Optional image projection head layer sizes (e.g., [768, 256, 64]).
-        text_head_layers: Optional text projection head layer sizes.
-        projection_activation: Activation function for projection heads.
-        fine_tune: Optional fine-tuned weights file (e.g., "siglip_blend-training-data_64-output-dim.pt").
-            If not found locally, automatically downloads it from Hugging Face.
+        model_name: OpenCLIP model architecture name (e.g. 'ViT-B-16-SigLIP-512').
+        device: PyTorch compute device.
+        pretrained: OpenCLIP pretrained tag (e.g. 'webli').
+        image_head_layers: Optional projection head sizes for image encoder.
+        text_head_layers: Optional projection head sizes for text encoder.
+        projection_activation: Activation class for MLP projection layers.
+        fine_tune: Optional fine-tuned weights file from Hugging Face or local path.
 
     Returns:
-        (model, tokenizer, preprocess_transform)
+        Tuple of (model, tokenizer, preprocess_transform).
     """
     loading_time_start = time.time()
     print(f"Loading base CLIP model {model_name}...")
@@ -200,25 +212,35 @@ def create_clip_model_and_tokenizer(
 
 
 class _ProjectionHead(torch.nn.Module):
-    """An MLP projection head for contrastive learning with len(layer_sizes) - 1 layers."""
+    """An MLP projection head for contrastive embeddings."""
 
     def __init__(self, layer_sizes: Sequence[int], activation: type[torch.nn.Module] = torch.nn.ReLU):
+        """Initialize projection head MLP.
+
+        Args:
+            layer_sizes: List of layer dimension integers.
+            activation: Activation layer class.
+
+        Raises:
+            ValueError: If fewer than two layer sizes are provided.
+        """
         super().__init__()
         if len(layer_sizes) < 2:
             raise ValueError("ProjectionHead requires at least two layer sizes (input and output).")
         layers = []
         for i in range(len(layer_sizes) - 1):
             layers.append(torch.nn.Linear(layer_sizes[i], layer_sizes[i + 1]))
-            if i < len(layer_sizes) - 2:  # don't apply activation after last layer
+            if i < len(layer_sizes) - 2:
                 layers.append(activation())
         self.mlp = torch.nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass through MLP layers."""
         return self.mlp(x)
 
 
 class _CLIPWithProjectionHeads(torch.nn.Module):
-    """Wraps an OpenCLIP model with optional image/text projection heads."""
+    """OpenCLIP wrapper adding optional MLP projection heads on image and text outputs."""
 
     def __init__(
         self,
@@ -226,35 +248,38 @@ class _CLIPWithProjectionHeads(torch.nn.Module):
         image_projection: torch.nn.Module | None = None,
         text_projection: torch.nn.Module | None = None,
     ):
+        """Initialize wrapper with underlying CLIP model and optional heads."""
         super().__init__()
         self.clip_model: Any = clip_model
         self.image_projection = image_projection
         self.text_projection = text_projection
 
     def forward(self, *args, **kwargs):
+        """Forward to underlying CLIP model."""
         return self.clip_model(*args, **kwargs)
 
     def encode_image(self, images: torch.Tensor) -> torch.Tensor:
+        """Encode image tensor with underlying CLIP and optional projection head."""
         features = self.clip_model.encode_image(images)
         if self.image_projection is not None:
             features = self.image_projection(features)
         return features
 
     def encode_text(self, tokens: torch.Tensor) -> torch.Tensor:
+        """Encode text token tensor with underlying CLIP and optional projection head."""
         features = self.clip_model.encode_text(tokens)
         if self.text_projection is not None:
             features = self.text_projection(features)
         return features
 
     def __getattr__(self, name: str):
-        # Delegate attribute access to the wrapped CLIP model for compatibility.
+        """Delegate attribute lookup to wrapped CLIP model."""
         try:
             return super().__getattr__(name)
         except AttributeError:
             return getattr(self.clip_model, name)
 
 
-# Registry mapping model names to (factory_fn, weights_enum, embed_dim, image_size)
 _VIT_REGISTRY = {
     "vit_b_16": (vit_b_16, ViT_B_16_Weights.IMAGENET1K_V1, 768, 224),
     "vit_b_32": (vit_b_32, ViT_B_32_Weights.IMAGENET1K_V1, 768, 224),
@@ -264,7 +289,7 @@ _VIT_REGISTRY = {
 
 
 class _VisionOnlyModel(torch.nn.Module):
-    """A vision-only model wrapper using PyTorch's ViT."""
+    """Vision-only model wrapper using PyTorch torchvision ViT."""
 
     def __init__(
         self,
@@ -272,6 +297,7 @@ class _VisionOnlyModel(torch.nn.Module):
         embed_dim: int,
         image_projection: torch.nn.Module | None = None,
     ):
+        """Initialize vision-only model."""
         super().__init__()
         self.vit_model = vit_model
         self.embed_dim = embed_dim
@@ -279,15 +305,18 @@ class _VisionOnlyModel(torch.nn.Module):
         self.vit_model.heads = torch.nn.Identity()
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
+        """Forward pass through encode_image."""
         return self.encode_image(images)
 
     def encode_image(self, images: torch.Tensor) -> torch.Tensor:
+        """Extract visual feature embeddings from images."""
         features = self.vit_model(images)
         if self.image_projection is not None:
             features = self.image_projection(features)
         return features
 
     def encode_text(self, tokens: torch.Tensor) -> torch.Tensor:
+        """Raise NotImplementedError as vision-only model lacks text encoder."""
         raise NotImplementedError("VisionOnlyModel does not support text encoding.")
 
 
@@ -297,6 +326,7 @@ def _wrap_model_with_projection_heads(
     text_head_layers: Sequence[int] | None = None,
     activation: type[torch.nn.Module] = torch.nn.ReLU,
 ) -> _CLIPWithProjectionHeads:
+    """Attach projection heads to an OpenCLIP model."""
     if image_head_layers is not None and text_head_layers is not None:
         assert image_head_layers[-1] == text_head_layers[-1], "Image and text projection heads must have the same output dimension."
 

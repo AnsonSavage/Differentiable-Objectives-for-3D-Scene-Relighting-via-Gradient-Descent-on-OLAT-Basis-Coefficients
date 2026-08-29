@@ -1,22 +1,19 @@
-"""Color space conversion helpers.
-
-This module provides tensor and numpy implementations for converting
-linear Rec.709 RGB to sRGB.
-"""
+"""Color space conversion helpers for linear Rec.709 to sRGB."""
+from __future__ import annotations
 
 import numpy as np
 import torch
 
 
 def linear_to_srgb(linear_rgb: torch.Tensor, clamp: bool = True) -> torch.Tensor:
-    """Convert a linear RGB tensor to sRGB.
+    """Convert a linear RGB tensor to standard sRGB.
 
     Args:
-        linear_rgb: Tensor of shape (...), values in [0, 1]
-        clamp: Whether to clamp the output to [0, 1]
+        linear_rgb: Tensor of arbitrary shape with values in [0, 1].
+        clamp: Whether to clamp output values to [0, 1].
 
     Returns:
-        Tensor of same shape in sRGB.
+        Tensor of same shape in sRGB color space.
     """
     threshold = 0.0031308
     below = linear_rgb <= threshold
@@ -32,7 +29,14 @@ def linear_to_srgb(linear_rgb: torch.Tensor, clamp: bool = True) -> torch.Tensor
 
 
 def linear_to_srgb_numpy(linear_rgb: np.ndarray) -> np.ndarray:
-    """Convert a linear RGB numpy array to sRGB via the torch implementation."""
+    """Convert a linear RGB numpy array to sRGB via PyTorch.
+
+    Args:
+        linear_rgb: NumPy array with float values in [0, 1].
+
+    Returns:
+        NumPy array of same shape in sRGB color space.
+    """
     arr = (
         linear_rgb
         if np.issubdtype(linear_rgb.dtype, np.floating)

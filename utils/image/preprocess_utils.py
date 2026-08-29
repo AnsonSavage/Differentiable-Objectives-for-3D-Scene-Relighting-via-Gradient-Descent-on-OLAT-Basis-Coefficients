@@ -1,6 +1,9 @@
-"""
-Utilities for preprocessing images for various vision models.
-"""
+"""Utilities for preprocessing images."""
+
+# NOTE:
+# These methods were created because `preprocess` expects a PIL Image. However, our pipeline requires back propagating through the `preprocess` method in order to update the light parameters.
+# This module simply replicates, using differentiable PyTorch methods, what the `preprocess` method would do in some cases (e.g., resizing, normalization), but cannot handle arbitrary transforms.
+# This code could be avoided if external libraries are updated to take PyTorch tensors directly.
 from __future__ import annotations
 
 from typing import Any
@@ -18,31 +21,32 @@ def _extract_preprocess_meta(preprocess: Any) -> dict[str, Any]:
 
     Supports common torchvision Compose pipelines returned by open_clip.create_transform.
 
-    Note that this was originally done to create a differentiable preprocessing pipeline when the original code only returned PIL images, not torch tensors.
+    Args:
+        preprocess: Preprocessing pipeline object.
+
+    Returns:
+        Dictionary containing extracted metadata keys (image_size, mean, std, resize_mode, interpolation).
     """
     meta: dict[str, Any] = {
-        "image_size": None,  # int or (H, W)
+        "image_size": None,
         "mean": None,
         "std": None,
-        "resize_mode": None,  # 'shortest' | 'longest' | 'squash'
-        "interpolation": None,  # InterpolationMode or str
+        "resize_mode": None,
+        "interpolation": None,
     }
     transforms = getattr(preprocess, "transforms", None)
     if transforms is None and hasattr(preprocess, "_transforms"):
-        # torchvision v2 API may store under _transforms
         transforms = getattr(preprocess, "_transforms", None)
 
     if transforms is not None:
         for t in transforms:
             cls_name = t.__class__.__name__
-            # Resize / CenterCrop define the target spatial size
             if cls_name == "Resize":
                 size = getattr(t, "size", None)
                 if isinstance(size, int):
                     meta["image_size"] = size
                 elif isinstance(size, (tuple, list)) and len(size) > 0:
                     meta["image_size"] = int(size[0])
-                # torchvision Resize with int -> shortest; with tuple -> squash
                 interp = getattr(t, "interpolation", None)
                 if interp is not None:
                     meta["interpolation"] = interp
@@ -56,7 +60,6 @@ def _extract_preprocess_meta(preprocess: Any) -> dict[str, Any]:
                     meta["image_size"] = meta["image_size"] or size
                 elif isinstance(size, (tuple, list)) and len(size) > 0:
                     meta["image_size"] = meta["image_size"] or int(size[0])
-                # CenterCrop typically follows shortest resize
                 meta["resize_mode"] = meta["resize_mode"] or "shortest"
             elif cls_name == "Normalize":
                 mean = getattr(t, "mean", None)
@@ -65,7 +68,6 @@ def _extract_preprocess_meta(preprocess: Any) -> dict[str, Any]:
                     meta["mean"] = tuple(float(x) for x in mean)
                     meta["std"] = tuple(float(x) for x in std)
             elif cls_name == "ResizeKeepRatio":
-                # open_clip custom class, has attrs: size, interpolation, longest
                 size = getattr(t, "size", None)
                 if isinstance(size, int):
                     meta["image_size"] = meta["image_size"] or size
@@ -82,9 +84,9 @@ def _extract_preprocess_meta(preprocess: Any) -> dict[str, Any]:
                     meta["image_size"] = meta["image_size"] or size
                 elif isinstance(size, (tuple, list)) and len(size) > 0:
                     meta["image_size"] = meta["image_size"] or int(size[0])
-                # CenterCropOrPad usually accompanies 'longest'
                 meta["resize_mode"] = meta["resize_mode"] or "longest"
     return meta
+
 
 def preprocess_image_tensor(
     tensor: torch.Tensor,
@@ -95,16 +97,21 @@ def preprocess_image_tensor(
     std: tuple[float, float, float] | None = None,
     fallback_default_image_size: int = 224,
 ) -> torch.Tensor:
-    """Preprocess a tensor for image processors using either provided preprocess or defaults.
+    """Preprocess a tensor for vision backbones using extracted transform metadata or defaults.
 
     Args:
-        tensor: [C,H,W] or [N,C,H,W], float in [0,1]
-        n_px: Optional output size override. If None, derived from preprocess or default 224.
-        preprocess: Optional preprocess pipeline to extract size/normalization from.
-        mean/std: Optional overrides for normalization.
+        tensor: Tensor of shape [C, H, W] or [N, C, H, W] in [0, 1].
+        n_px: Optional explicit output resolution override.
+        preprocess: Optional torchvision Compose transform to extract parameters from.
+        mean: Optional channel-wise normalization mean.
+        std: Optional channel-wise normalization std.
+        fallback_default_image_size: Default pixel resolution if not specified.
 
     Returns:
-        Preprocessed tensor with same batch rank as input.
+        Preprocessed image tensor matching input batch dimensionality.
+
+    Raises:
+        ValueError: If input tensor dimension is not 3 or 4.
     """
     if tensor.dim() == 3:
         batched = False
@@ -116,7 +123,6 @@ def preprocess_image_tensor(
         raise ValueError("Expected tensor of shape [C,H,W] or [N,C,H,W]")
 
     meta = _extract_preprocess_meta(preprocess) if preprocess is not None else {}
-    # Resolve size to (H, W)
     _size = n_px or meta.get("image_size") or fallback_default_image_size
     if isinstance(_size, int):
         target_h, target_w = _size, _size
@@ -131,7 +137,7 @@ def preprocess_image_tensor(
     if isinstance(interp, InterpolationMode):
         interpolation = interp
     elif isinstance(interp, str):
-        interpolation = InterpolationMode.BICUBIC if interp == 'bicubic' else InterpolationMode.BILINEAR
+        interpolation = InterpolationMode.BICUBIC if interp == "bicubic" else InterpolationMode.BILINEAR
     else:
         interpolation = InterpolationMode.BICUBIC
 
@@ -144,7 +150,6 @@ def preprocess_image_tensor(
         if pad_l or pad_r or pad_t or pad_b:
             x = F.pad(x, [pad_l, pad_t, pad_r, pad_b])
             _, h, w = x.shape
-        # Now crop center to desired size
         top = max((h - out_h) // 2, 0)
         left = max((w - out_w) // 2, 0)
         return F.crop(x, top, left, out_h, out_w)
@@ -155,14 +160,12 @@ def preprocess_image_tensor(
         if resize_mode == "squash":
             x = F.resize(img, [target_h, target_w], interpolation=interpolation, antialias=True)
         elif resize_mode == "shortest":
-            # Scale so that resized image covers target in both dims, then center crop
             scale = max(target_h / h, target_w / w)
             new_h = max(1, int(round(h * scale)))
             new_w = max(1, int(round(w * scale)))
             x = F.resize(img, [new_h, new_w], interpolation=interpolation, antialias=True)
             x = F.center_crop(x, [target_h, target_w])
         else:  # 'longest'
-            # Scale so that the longest dimension fits within target, then center crop or pad
             scale = min(target_h / h, target_w / w)
             new_h = max(1, int(round(h * scale)))
             new_w = max(1, int(round(w * scale)))
@@ -173,18 +176,25 @@ def preprocess_image_tensor(
     out = torch.stack(processed, dim=0)
     return out if batched else out.squeeze(0)
 
+
 def preprocess_image_input(
     image: torch.Tensor | Image.Image,
     *,
     preprocess: Any,
     device: torch.device | str | None = None,
 ) -> torch.Tensor:
-    """Unified preprocessing for PIL or tensor input using a provided preprocess pipeline. This is important because most preprocess pipelines are designed for PIL images, but in our case we already have image Tensors and we need to be able to backprop through the preprocessing.
+    """Preprocess PIL Image or PyTorch Tensor input for vision backbones differentiably.
 
-    - For PIL images: calls the given `preprocess` directly.
-    - For tensors: applies a tensor-equivalent resize/crop/normalize inferred from `preprocess`.
+    Args:
+        image: PIL Image or Tensor [C, H, W] / [N, C, H, W].
+        preprocess: Preprocessing transform pipeline.
+        device: Target PyTorch device.
 
-    Returns a batched tensor [N,C,H,W].
+    Returns:
+        Batched tensor of shape [N, C, H, W] on target device.
+
+    Raises:
+        TypeError: If input type is neither PIL Image nor torch.Tensor.
     """
     if isinstance(image, Image.Image):
         t = preprocess(image).unsqueeze(0)
