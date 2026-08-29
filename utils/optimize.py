@@ -1,6 +1,4 @@
-"""
-Optimization loop for learning multipliers of OLATs for a given criterion.
-"""
+"""Optimization loop for learning multipliers of OLATs for a given criterion."""
 
 from __future__ import annotations
 
@@ -36,14 +34,14 @@ def optimize_with_criterion(
     scene: Scene,
     learning_rate: float,
     n_iterations: int,
-    criterion: BaseLoss | UpdatableLoss,
+    criterion: BaseLoss,
     starting_multiplier_std: float | tuple[float, float, float],
     output_subdirectory_name: str,
     n_results: int = 1,
     patience: int | None = None,
     learning_rate_scheduler_creator_callback: Callable[[torch.optim.Optimizer], torch.optim.lr_scheduler.LRScheduler] | None = None,
     torch_precision=torch.float32,
-    device='cuda',
+    device="cuda",
     augmentation: v2.Transform | None = None,
     augmentation_callback: Callable[[int], v2.Transform] | None = None,
     parameters_stored_as_hsv: bool = False,
@@ -52,7 +50,7 @@ def optimize_with_criterion(
     require_physically_plausible_multipliers: bool = True,
     loss_on_multipliers: torch.nn.Module | None = None,
     title_prefix: str = "",
-    save_every=50,
+    save_every: int = 50,
     model_name: str | None = None,
     pretrained_source: str | None = None,
     seed: int | None = None,
@@ -64,42 +62,49 @@ def optimize_with_criterion(
     run_name_suffix: str | None = None,
     starting_multiplier_mean: float | tuple[float, float, float] | None = None,
     save_loss_plot_each_iteration: bool = False,
-):
-    """Train image multipliers to optimize a criterion.
-    
-    Args:
-        scene: Scene object providing images to optimize
-        learning_rate: Learning rate for optimization
-        n_iterations: Number of iterations to run
-        criterion: BaseLoss | UpdatableLoss, Loss function to minimize
-        starting_multiplier_std: Standard deviation for multiplier initialization
-                                 (single float for RGB, tuple of 3 floats for HSV)
-        starting_multiplier_mean: Mean for multiplier initialization
-                      (single float or tuple of 3 floats). Defaults are
-                      RGB=(1.0, 1.0, 1.0), HSV=(0.0, 0.0, 1.0).
-        n_results: Number of images to optimize in parallel
-        patience: Number of iterations with no improvement to wait before early stopping
-        torch_precision: Data type precision
-        device: Computation device
-        augmentation: A random augmentation to apply during training
-        augmentation_callback: A callable that takes the current epoch and returns a v2.Transform augmentation to apply
-        parameters_stored_as_hsv: Whether to store parameters in HSV color space
-        hsv_callback: A callable that takes the current epoch and returns a string containing a combination of the character 'h', 's', and 'v', indicating whether it is legal to adjust the hue, saturation, or value
-        render_color_space_converter: A LinearRec709TosRGB implementation to convert to display space
-        require_physically_plausible_multipliers: Whether to clamp multipliers to be non-negative, etc.
-        title_prefix: Prefix for image titles
-        show_images_before_augmentation: If True, display images before any augmentations
-        show_images_after_augmentation: If True, display images after the augmentation passed in via the augmentation argument
-        show_images_after_augmentation_callback: If True, display images after augmentation_callback
-        
-    Returns:
-        Tuple of (multipliers, loss_values)
+) -> tuple[torch.Tensor, list[float]]:
+    """Train image multipliers to optimize an objective criterion on OLAT light passes.
 
-    Side Effects / Outputs:
-        - settings.json: configuration used for this run
-        - resources_summary.json: runtime + GPU memory usage (runtime ms, runtime cuda bytes)
-        - loss_plot.png, intermediate/final images, multipliers snapshots
-        - optionally, loss_plot_iterXXXX.png for every iteration
+    Args:
+        scene: Scene object providing optimizable images.
+        learning_rate: Optimizer learning rate.
+        n_iterations: Total number of optimization steps to run.
+        criterion: Loss function to minimize (a subclass of BaseLoss).
+        starting_multiplier_std: Standard deviation for multiplier initialization
+            (float for RGB, 3-tuple of floats for HSV).
+        output_subdirectory_name: Name of the subdirectory inside the experiment runs folder.
+        n_results: Number of independent multiplier solutions to optimize in parallel.
+        patience: Optional early stopping threshold (steps without improvement).
+        learning_rate_scheduler_creator_callback: Optional callable returning an LR scheduler.
+        torch_precision: PyTorch floating point precision.
+        device: Computation device ('cuda' or 'cpu').
+        augmentation: Optional torchvision v2 static transform applied per step.
+        augmentation_callback: Optional callable returning a step-dependent augmentation.
+        parameters_stored_as_hsv: If True, optimizes in HSV color space instead of RGB.
+        hsv_callback: Optional callable returning active trainable channels ('h', 's', 'v').
+        render_color_space_converter: Converter to display color space (default AgX Base).
+        require_physically_plausible_multipliers: If True, clamps multipliers non-negative.
+        loss_on_multipliers: Optional direct regularization loss on multiplier parameters.
+        title_prefix: Optional prefix for image display titles.
+        save_every: Iteration frequency for saving snapshots of images and learned multipliers.
+        model_name: Optional model identifier string for run logging.
+        pretrained_source: Optional pretrained weights descriptor for logging.
+        seed: Optional integer seed for reproducibility.
+        show_images: Whether to display visual plots during training.
+        show_images_before_augmentation: If True, shows unaugmented predictions.
+        show_images_after_augmentation: If True, shows post-static-augmentation predictions.
+        show_images_after_augmentation_callback: If True, shows post-callback-augmentation predictions.
+        save_final_display_to_run_dir: Whether to save final rendered grid to run directory.
+        run_name_suffix: Optional string suffix appended to run folder name.
+        starting_multiplier_mean: Mean for multiplier initialization. (single float or tuple of 3 floats). Defaults are
+                      RGB=(1.0, 1.0, 1.0), HSV=(0.0, 0.0, 1.0).
+        save_loss_plot_each_iteration: If True, saves intermediate loss plots every step.
+
+    Returns:
+        Tuple of (final_multipliers_tensor, loss_history_list).
+
+    Raises:
+        RuntimeError: If a non-finite loss value is encountered during optimization.
     """
     # Determine seed and set global RNGs for reproducibility
     seed = set_global_seed(seed)

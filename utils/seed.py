@@ -1,5 +1,4 @@
-"""
-Seeding utility for reproducible PyTorch experiments.
+"""Seeding utility for reproducible PyTorch experiments.
 
 Usage:
     from utils.seed import set_global_seed
@@ -14,10 +13,10 @@ def set_global_seed(seed: int | None = None) -> int:
     """Set global PyTorch RNG seed (CPU and CUDA) and return the resolved seed.
 
     Args:
-        seed: Optional seed integer. If None, a seed is generated via PyTorch.
+        seed: Optional seed integer. If None, a random seed is generated.
 
     Returns:
-        int: The resolved seed integer applied to PyTorch.
+        The resolved seed integer applied to PyTorch.
     """
     if seed is None:
         seed = int(torch.randint(0, 2**31 - 1, (1,)).item())

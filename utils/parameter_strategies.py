@@ -1,5 +1,4 @@
-"""
-Parameter strategies for handling RGB vs HSV parameter spaces during optimization.
+"""Parameter strategies for handling RGB vs HSV parameter spaces during optimization.
 
 This module implements the Strategy pattern to eliminate conditional logic
 for different parameter representations (RGB vs HSV).
@@ -33,14 +32,14 @@ class ParameterStrategy(ABC):
         """Initialize parameters and optimizers.
 
         Args:
-            n_results: Number of optimization results
-            num_lights: Number of light sources
-            mean: Mean for parameter initialization
-            std: Standard deviation for parameter initialization
-            torch_precision: PyTorch data type
-            device: Device to place tensors on
-            learning_rate: Learning rate for optimizer
-            learning_rate_scheduler_creator_callback: Optional callback to create an LR scheduler
+            n_results: Number of optimization results.
+            num_lights: Number of light sources.
+            mean: Mean for parameter initialization.
+            std: Standard deviation for parameter initialization.
+            torch_precision: PyTorch data type.
+            device: Device to place tensors on.
+            learning_rate: Learning rate for optimizer.
+            learning_rate_scheduler_creator_callback: Optional callback to create an LR scheduler.
         """
 
     @abstractmethod
@@ -52,7 +51,7 @@ class ParameterStrategy(ABC):
         """Update which parameters are trainable based on current epoch.
 
         Args:
-            epoch: Current training iteration
+            epoch: Current training iteration.
         """
 
     @abstractmethod
@@ -60,7 +59,7 @@ class ParameterStrategy(ABC):
         """Get current multipliers tensor in RGB space.
 
         Returns:
-            Tensor of shape [n_results, num_lights, 3] in RGB space
+            Tensor of shape [n_results, num_lights, 3] in RGB space.
         """
 
     @abstractmethod
@@ -75,15 +74,20 @@ class ParameterStrategy(ABC):
         """Get parameters in their native representation for saving.
 
         Returns:
-            Parameters tensor (RGB or HSV depending on strategy)
+            Parameters tensor (RGB or HSV depending on strategy).
         """
         return self.get_multipliers()
 
 
 class RGBParameterStrategy(ParameterStrategy):
-    """Strategy for optimizing in RGB color space."""
+    """Strategy for optimizing directly in RGB color space."""
 
     def __init__(self, verbose: bool = False):
+        """Initialize RGBParameterStrategy.
+
+        Args:
+            verbose: If True, prints learning rate updates.
+        """
         self.multipliers: torch.nn.Parameter | None = None
         self.optimizer: torch.optim.Optimizer | None = None
         self.scheduler: torch.optim.lr_scheduler.LRScheduler | None = None
@@ -102,7 +106,18 @@ class RGBParameterStrategy(ParameterStrategy):
     ) -> None:
         """Initialize RGB multipliers and optimizer.
 
-        RGB multipliers are initialized using the provided mean.
+        Args:
+            n_results: Number of parallel results.
+            num_lights: Number of light sources.
+            mean: Mean float or 3-tuple for initialization.
+            std: Std float or 3-tuple for initialization.
+            torch_precision: PyTorch data type precision.
+            device: Target device.
+            learning_rate: Optimizer learning rate.
+            learning_rate_scheduler_creator_callback: Optional LR scheduler factory.
+
+        Raises:
+            ValueError: If mean or std tuples are not of length 3.
         """
         if isinstance(mean, tuple):
             if len(mean) != 3:
@@ -130,22 +145,30 @@ class RGBParameterStrategy(ParameterStrategy):
             self.scheduler = learning_rate_scheduler_creator_callback(self.optimizer)
 
     def zero_grad(self) -> None:
-        """Zero gradients."""
+        """Zero gradients for RGB optimizer."""
         if self.optimizer is None:
             raise RuntimeError("Optimizer has not been initialized. Call initialize_parameters first.")
         self.optimizer.zero_grad()
 
     def update_parameter_constraints(self, epoch: int) -> None:
-        """No constraints to update for RGB - all channels always trainable."""
+        """Update parameter constraints (no-op for RGB as all channels are trainable).
+
+        Args:
+            epoch: Current training iteration.
+        """
 
     def get_multipliers(self) -> torch.Tensor:
-        """Return RGB multipliers directly."""
+        """Return RGB multipliers directly.
+
+        Returns:
+            RGB multipliers tensor of shape [n_results, num_lights, 3].
+        """
         if self.multipliers is None:
             raise RuntimeError("Multipliers have not been initialized. Call initialize_parameters first.")
         return self.multipliers
 
     def step(self) -> None:
-        """Perform optimizer step."""
+        """Perform optimizer step and advance scheduler if configured."""
         if self.optimizer is None:
             raise RuntimeError("Optimizer has not been initialized. Call initialize_parameters first.")
         self.optimizer.step()
@@ -169,9 +192,8 @@ class HSVParameterStrategy(ParameterStrategy):
         """Initialize HSV strategy.
 
         Args:
-            hsv_callback: Optional callback that returns which channels ('h', 's', 'v')
-                         are trainable at each epoch
-            verbose: Whether to print verbose learning rate info
+            hsv_callback: Optional callback returning trainable channels ('h', 's', 'v') per epoch.
+            verbose: Whether to print verbose learning rate info.
         """
         self.hsv_callback: Callable[[int], str] | None = hsv_callback
         self.h: torch.nn.Parameter | None = None
@@ -198,9 +220,20 @@ class HSVParameterStrategy(ParameterStrategy):
         learning_rate: float,
         learning_rate_scheduler_creator_callback: Callable[[torch.optim.Optimizer], torch.optim.lr_scheduler.LRScheduler] | None = None,
     ) -> None:
-        """Initialize HSV parameters and optimizers.
+        """Initialize HSV parameters (H, S, V) and respective Adam optimizers.
 
-        HSV parameters are initialized around the provided mean.
+        Args:
+            n_results: Number of parallel results.
+            num_lights: Number of light sources.
+            mean: Float or 3-tuple (H, S, V) for initialization mean.
+            std: 3-tuple of floats (H, S, V) for initialization standard deviations.
+            torch_precision: PyTorch data type precision.
+            device: Computation device.
+            learning_rate: Optimizer learning rate.
+            learning_rate_scheduler_creator_callback: Optional LR scheduler factory callback.
+
+        Raises:
+            ValueError: If mean or std formats are invalid for HSV.
         """
         if isinstance(mean, tuple):
             if len(mean) != 3:
@@ -266,7 +299,11 @@ class HSVParameterStrategy(ParameterStrategy):
             optimizer.zero_grad()
 
     def update_parameter_constraints(self, epoch: int) -> None:
-        """Update which HSV channels are trainable based on callback."""
+        """Update which HSV channels require gradients based on callback.
+
+        Args:
+            epoch: Current training iteration.
+        """
         if self.hsv_params is None:
             raise RuntimeError("HSV parameters have not been initialized.")
         legal_params = self.hsv_callback(epoch).lower() if self.hsv_callback else "hsv"
@@ -274,10 +311,10 @@ class HSVParameterStrategy(ParameterStrategy):
             param.requires_grad = param_name in legal_params
 
     def get_multipliers(self) -> torch.Tensor:
-        """Get multipliers by converting HSV to RGB.
+        """Convert current HSV parameters to RGB multipliers.
 
         Returns:
-            RGB multipliers tensor of shape [n_results, num_lights, 3]
+            RGB multipliers tensor of shape [n_results, num_lights, 3].
         """
         if self.h is None or self.s is None or self.v is None:
             raise RuntimeError("HSV parameters have not been initialized.")
@@ -287,7 +324,7 @@ class HSVParameterStrategy(ParameterStrategy):
         return rgb_reshaped.squeeze(-2).squeeze(-2)
 
     def step(self) -> None:
-        """Step only the optimizers for trainable parameters."""
+        """Step only the optimizers for currently trainable HSV parameters."""
         if self.hsv_optimizers is None or self.hsv_params is None:
             raise RuntimeError("HSV parameters/optimizers have not been initialized.")
         for param_name, optimizer in self.hsv_optimizers.items():
@@ -307,7 +344,7 @@ class HSVParameterStrategy(ParameterStrategy):
                     self.v_scheduler.step()
 
     def apply_physical_constraints(self) -> None:
-        """Apply HSV-specific constraints (wrap hue, clamp saturation and value)."""
+        """Apply HSV constraints (wrap hue modulo 1, clamp saturation [0, 1] and value >= 0)."""
         if self.h is None or self.s is None or self.v is None:
             raise RuntimeError("HSV parameters have not been initialized.")
         with torch.no_grad():
@@ -316,10 +353,10 @@ class HSVParameterStrategy(ParameterStrategy):
             self.v.clamp_(0)
 
     def get_parameters_for_saving(self) -> torch.Tensor:
-        """Return HSV parameters in their native representation.
+        """Return native HSV parameters tensor.
 
         Returns:
-            HSV tensor of shape [n_results, num_lights, 3]
+            HSV tensor of shape [n_results, num_lights, 3].
         """
         if self.h is None or self.s is None or self.v is None:
             raise RuntimeError("HSV parameters have not been initialized.")

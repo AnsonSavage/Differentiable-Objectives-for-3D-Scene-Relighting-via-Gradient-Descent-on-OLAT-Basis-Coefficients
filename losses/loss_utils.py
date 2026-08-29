@@ -1,13 +1,21 @@
-def compute_cosine_distance(static_embedding, dynamic_embedding, is_static_embedding_prenormalized=True):
-    """ Compute the cosine distance between two sets of embeddings.
-    
+"""Utility functions for computing distances and metrics in loss functions."""
+import torch
+
+
+def compute_cosine_distance(
+    static_embedding: torch.Tensor,
+    dynamic_embedding: torch.Tensor,
+    is_static_embedding_prenormalized: bool = True,
+) -> torch.Tensor:
+    """Compute the cosine distance (1 - cosine similarity) between sets of embeddings.
+
     Args:
-        static_embedding: A tensor of shape [num_references, embedding_dim]
-        dynamic_embedding: A tensor of shape [num_dynamics, embedding_dim]
-        is_static_embedding_prenormalized: Whether the static embedding is already normalized
+        static_embedding: Reference embeddings tensor of shape [num_references, embedding_dim].
+        dynamic_embedding: Evaluated embeddings tensor of shape [num_dynamics, embedding_dim].
+        is_static_embedding_prenormalized: Whether static_embedding is already unit-normalized.
 
     Returns:
-        A tensor of shape [num_dynamics] representing the cosine distances
+        Tensor of shape [num_dynamics] representing cosine distances.
     """
     if not is_static_embedding_prenormalized:
         static_embedding = static_embedding / static_embedding.norm(dim=-1, keepdim=True)

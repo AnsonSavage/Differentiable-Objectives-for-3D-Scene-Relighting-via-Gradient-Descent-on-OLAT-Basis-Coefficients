@@ -1,4 +1,4 @@
-"""Base classes related to Rec.709 to sRGB conversion."""
+"""Converters for transforming linear Rec.709 color to display sRGB."""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -11,45 +11,53 @@ from utils.color.tonemapping.agx_utils import applyAgXLogTorch, applyAgxLutTorch
 
 
 class LinearRec709TosRGB(ABC):
-    """Abstract base class for linear Rec. 709 to sRGB conversion."""
+    """Abstract base class for linear Rec. 709 to sRGB converters."""
 
     @abstractmethod
     def convert(self, linear_rgb: torch.Tensor) -> torch.Tensor:
         """Convert linear Rec. 709 RGB to sRGB.
 
         Args:
-            linear_rgb: Tensor of shape (3, H, W) or (N, 3, H, W), values in [0, 1]
+            linear_rgb: Tensor of shape (3, H, W) or (N, 3, H, W), with values in [0, 1].
 
         Returns:
-            Tensor of same shape, values in [0, 1]
+            Tensor of same shape in sRGB color space.
         """
 
     def __call__(self, linear_rec_709: torch.Tensor) -> torch.Tensor:
-        """Enable calling the converter instance directly.
+        """Apply converter by forwarding to convert().
 
-        This simply forwards to .convert(linear_rgb).
+        Args:
+            linear_rec_709: Input tensor in linear Rec. 709.
+
+        Returns:
+            Converted sRGB tensor.
         """
         return self.convert(linear_rec_709)
 
     def settings_info(self) -> dict:
-        """Return a serializable description of this converter for settings.json.
+        """Return a serializable description dictionary for experiment logging.
 
-        Base implementation reports only the converter name; subclasses can
-        extend with additional fields (e.g., look).
+        Returns:
+            Dictionary with converter name and parameters.
         """
         return {"name": self.__class__.__name__}
 
+
 class SimpleGammaCurve(LinearRec709TosRGB):
-    """Simple gamma curve implementation of LinearRec709TosRGB."""
+    """Linear Rec. 709 to sRGB converter using standard IEC 61966-2-1 piecewise gamma."""
 
     def convert(self, linear_rgb: torch.Tensor) -> torch.Tensor:
-        """Convert linear Rec. 709 RGB to sRGB using a simple gamma curve.
+        """Convert linear Rec. 709 RGB to sRGB using standard piecewise gamma.
 
         Args:
-            linear_rgb: Tensor of shape (3, H, W) or (N, 3, H, W), values in [0, 1]
+            linear_rgb: Tensor of shape (3, H, W) or (N, 3, H, W).
 
         Returns:
-            srgb: Tensor of same shape, values in [0, 1]
+            Tensor of same shape in sRGB.
+
+        Raises:
+            ValueError: If input tensor dimension is not 3 or 4.
         """
         if linear_rgb.dim() == 3:
             linear_rgb_batched = linear_rgb.unsqueeze(0)
@@ -63,14 +71,15 @@ class SimpleGammaCurve(LinearRec709TosRGB):
         srgb = linear_to_srgb(linear_rgb_batched.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
         return srgb.squeeze(0) if squeeze_back else srgb
 
-class LinearRec709ToAgXBase(LinearRec709TosRGB):
-    """Linear Rec. 709 to sRGB conversion using AgX tonemapping."""
 
-    def __init__(self, look: AgXLook|None =None):
-        """Initialize with a specific AgX look.
+class LinearRec709ToAgXBase(LinearRec709TosRGB):
+    """Linear Rec. 709 to sRGB converter using a differentiable implementation of the AgX view transform created for Blender (https://developer.blender.org/docs/release_notes/4.0/color_management/)."""
+
+    def __init__(self, look: AgXLook | None = None):
+        """Initialize AgX tonemapping converter.
 
         Args:
-            look: An instance of AgXLook defining the post processing
+            look: Optional AgXLook modification (e.g., AgXPunchyLook).
         """
         self.look = look
 
@@ -78,10 +87,13 @@ class LinearRec709ToAgXBase(LinearRec709TosRGB):
         """Convert linear Rec. 709 RGB to sRGB using AgX tonemapping.
 
         Args:
-            linear_rgb: Tensor of shape (3, H, W) or (N, 3, H, W), values in [0, 1]
+            linear_rgb: Tensor of shape (3, H, W) or (N, 3, H, W).
 
         Returns:
-            srgb: Tensor of same shape, values in [0, 1]
+            Tonemapped sRGB tensor of same shape.
+
+        Raises:
+            ValueError: If input tensor dimension is not 3 or 4.
         """
         if linear_rgb.dim() == 3:
             linear_rgb_batched = linear_rgb.unsqueeze(0)
@@ -100,6 +112,11 @@ class LinearRec709ToAgXBase(LinearRec709TosRGB):
         return srgb.squeeze(0) if squeeze_back else srgb
 
     def settings_info(self) -> dict:
+        """Return serialized converter description including active look.
+
+        Returns:
+            Dictionary containing converter and look names.
+        """
         info = super().settings_info()
         if self.look is not None:
             look_name = getattr(self.look, "name", None)
