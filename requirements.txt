@@ -1,15 +1,20 @@
-# Core Deep Learning & Optimization
-torch==2.8.0
-torchvision==0.23.0
-numpy==2.0.2
 pillow==11.3.0
 matplotlib==3.9.4
 tqdm==4.67.1
 
+# Core Deep Learning & Optimization
+torch==2.8.0
+torchvision==0.23.0
+numpy==2.0.2
+
 # Vision & Diffusion Models
 open_clip_torch==3.3.0
 diffusers==0.35.2
-# transformers==5.14.1
+
+# These two are required for the diffusion models:
+transformers==5.14.1
+peft==0.20.0
+
 git+https://github.com/openai/CLIP.git
 lpips==0.1.4
 pytorch-msssim==1.0.0
