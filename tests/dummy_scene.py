@@ -1,4 +1,6 @@
 """Synthetic lightweight dummy scene for fast unit and workflow testing."""
+from typing import Self
+
 import torch
 
 from utils.color.linear_to_srgb_converters import (
@@ -65,7 +67,7 @@ class DummyScene(Scene):
         """Returns list of light names."""
         return list(self._light_names)
 
-    def to(self, device: str) -> DummyScene:
+    def to(self, device: str) -> Self:
         """Move tensors to the specified device."""
         self.device = device
         self._images = self._images.to(device=device)
