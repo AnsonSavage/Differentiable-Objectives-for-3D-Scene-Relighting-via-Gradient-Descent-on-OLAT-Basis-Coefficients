@@ -1,6 +1,4 @@
-"""Helper for tracking and assembling settings used when optimizing OLAT multipliers."""
-from __future__ import annotations
-
+"""Helper for tracking and assembling experiment run settings for JSON serialization."""
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any

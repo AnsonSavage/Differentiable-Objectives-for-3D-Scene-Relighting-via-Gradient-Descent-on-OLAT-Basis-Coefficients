@@ -4,8 +4,6 @@
 # These methods were created because `preprocess` expects a PIL Image. However, our pipeline requires back propagating through the `preprocess` method in order to update the light parameters.
 # This module simply replicates, using differentiable PyTorch methods, what the `preprocess` method would do in some cases (e.g., resizing, normalization), but cannot handle arbitrary transforms.
 # This code could be avoided if external libraries are updated to take PyTorch tensors directly.
-from __future__ import annotations
-
 from typing import Any
 
 import torch

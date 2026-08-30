@@ -1,8 +1,7 @@
 """FLUX-based generative relighting loss and caching utilities."""
-from __future__ import annotations
-
 import os
 from datetime import datetime
+from typing import Any
 
 import matplotlib.pyplot as plt
 import torch

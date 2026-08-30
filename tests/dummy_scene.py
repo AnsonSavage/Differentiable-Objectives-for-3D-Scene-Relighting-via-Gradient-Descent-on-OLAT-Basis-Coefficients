@@ -1,6 +1,4 @@
 """Synthetic lightweight dummy scene for fast unit and workflow testing."""
-from __future__ import annotations
-
 import torch
 
 from utils.color.linear_to_srgb_converters import (

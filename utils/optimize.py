@@ -1,7 +1,5 @@
 """Optimization loop for learning multipliers of OLATs for a given criterion."""
 
-from __future__ import annotations
-
 import os
 from collections.abc import Callable
 

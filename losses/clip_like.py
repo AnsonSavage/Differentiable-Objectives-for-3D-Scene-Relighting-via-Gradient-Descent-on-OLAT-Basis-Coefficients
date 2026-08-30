@@ -1,6 +1,4 @@
 """CLIP-style loss functions for image relighting with text guidance. Classes are compatible with CLIP-style models that return images and text in a shared embedding space."""
-from __future__ import annotations
-
 from typing import Any
 
 import torch

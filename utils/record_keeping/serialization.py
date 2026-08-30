@@ -1,6 +1,4 @@
 """Serialization utilities for saving optimization hyperparameters and objects to JSON."""
-from __future__ import annotations
-
 import inspect
 import json
 from typing import Any

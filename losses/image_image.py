@@ -4,6 +4,7 @@ Note:
     All color space conversions (e.g., linear to sRGB) must be handled before passing tensors.
 """
 from abc import ABC, abstractmethod
+from typing import Any
 
 import torch
 import torchvision.transforms.functional as F

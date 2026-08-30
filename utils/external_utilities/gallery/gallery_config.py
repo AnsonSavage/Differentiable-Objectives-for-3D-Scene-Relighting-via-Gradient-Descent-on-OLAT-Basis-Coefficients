@@ -1,6 +1,4 @@
 """Configuration and persistent settings for the web gallery application."""
-from __future__ import annotations
-
 import json
 import os
 from pathlib import Path

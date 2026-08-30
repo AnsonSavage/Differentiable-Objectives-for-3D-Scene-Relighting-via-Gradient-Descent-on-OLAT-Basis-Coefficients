@@ -1,6 +1,4 @@
-"""Converters for transforming linear Rec.709 color to display sRGB."""
-from __future__ import annotations
-
+"""Differentiable color space converters from Linear Rec.709 to sRGB and AgX Base."""
 from abc import ABC, abstractmethod
 
 import torch

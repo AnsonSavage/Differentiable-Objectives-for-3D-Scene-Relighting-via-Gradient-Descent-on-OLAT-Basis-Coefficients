@@ -1,6 +1,4 @@
 """Pre-configured example OLAT scenes downloaded from Hugging Face."""
-from __future__ import annotations
-
 from pathlib import Path
 
 from utils.scene import MultiLayerEXRScene, OLATDirScene

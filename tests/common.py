@@ -1,6 +1,4 @@
 """Common test fixtures, base test case, and configuration utilities."""
-from __future__ import annotations
-
 import os
 import shutil
 import sys

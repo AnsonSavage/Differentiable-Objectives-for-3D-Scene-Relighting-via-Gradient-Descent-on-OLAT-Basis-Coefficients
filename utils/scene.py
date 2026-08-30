@@ -1,6 +1,4 @@
 """Scene abstractions for loading and managing OLAT lighting data."""
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from pathlib import Path
 

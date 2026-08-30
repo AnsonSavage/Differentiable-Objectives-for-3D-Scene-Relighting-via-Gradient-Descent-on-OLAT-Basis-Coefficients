@@ -1,6 +1,4 @@
 """Flask web application for browsing and filtering relighting experiment runs."""
-from __future__ import annotations
-
 import json
 import os
 import re

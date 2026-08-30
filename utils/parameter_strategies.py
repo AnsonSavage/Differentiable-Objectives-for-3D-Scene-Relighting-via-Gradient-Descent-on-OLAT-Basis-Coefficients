@@ -3,8 +3,6 @@
 This module implements the Strategy pattern to eliminate conditional logic
 for different parameter representations (RGB vs HSV).
 """
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 

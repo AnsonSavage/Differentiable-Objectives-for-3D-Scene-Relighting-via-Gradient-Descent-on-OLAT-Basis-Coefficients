@@ -4,7 +4,6 @@ Usage:
     from utils.seed import set_global_seed
     resolved_seed = set_global_seed(seed)
 """
-from __future__ import annotations
 
 import torch
 

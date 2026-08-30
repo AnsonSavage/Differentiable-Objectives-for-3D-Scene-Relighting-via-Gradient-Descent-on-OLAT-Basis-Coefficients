@@ -13,8 +13,6 @@ Python Usage:
     >>> tests.run_all()                    # Run all tests
     >>> tests.run_interactive()            # Interactive prompt to choose tests
 """
-from __future__ import annotations
-
 import importlib
 import os
 import sys
@@ -22,7 +20,7 @@ import time
 import unittest
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence, Type
+from typing import Any, Sequence
 
 # Ensure repository root is on sys.path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -39,7 +37,7 @@ class TestItem:
     module_name: str
     class_name: str
 
-    def get_test_class(self) -> Type[unittest.TestCase]:
+    def get_test_class(self) -> type[unittest.TestCase]:
         """Lazy-load the test class so listing and importing remain instantaneous."""
         mod = importlib.import_module(f"tests.{self.module_name}")
         return getattr(mod, self.class_name)

@@ -1,6 +1,4 @@
 """Color space conversion helpers for linear Rec.709 to sRGB."""
-from __future__ import annotations
-
 import numpy as np
 import torch
 

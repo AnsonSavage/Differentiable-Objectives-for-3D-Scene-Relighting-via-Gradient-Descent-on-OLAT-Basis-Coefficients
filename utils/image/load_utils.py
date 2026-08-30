@@ -5,8 +5,6 @@ Provides:
 - get_images_tensor_from_multi_layer_exr: Load per-light layers from a multilayer EXR.
 - load_alpha_tensor: Load only the alpha channel as a tensor.
 """
-from __future__ import annotations
-
 import glob
 import os
 from pathlib import Path
