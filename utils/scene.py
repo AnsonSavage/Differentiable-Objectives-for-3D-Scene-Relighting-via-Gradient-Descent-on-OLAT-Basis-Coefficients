@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import override
 
 import torch
 
@@ -198,20 +199,20 @@ class OLATDirScene(Scene):
             except Exception as e:
                 print(f"Warning: Failed to load alpha mask: {e}")
 
+    @override
     def get_optimizable_images(self) -> torch.Tensor:
-        """Return stack of optimizable light tensors (N, H, W, C)."""
         return self.optimizable_images
 
+    @override
     def get_light_name_list(self) -> list[str] | None:
-        """Return list of light filenames."""
         return self.light_name_list
 
+    @override
     def get_non_optimized_lights(self) -> torch.Tensor | None:
-        """Return non-optimized base lighting tensor if loaded."""
         return self.non_optimized_lights_tensor
 
+    @override
     def get_alpha_mask(self) -> torch.Tensor | None:
-        """Return alpha mask tensor if loaded."""
         return self._alpha_mask
 
 
@@ -247,14 +248,14 @@ class MultiLayerEXRScene(Scene):
         if len(self.optimizable_images) < 1:
             raise ValueError(f"No optimizable images found in EXR file: {path_to_exr}")
 
+    @override
     def get_optimizable_images(self) -> torch.Tensor:
-        """Return stack of optimizable light layer tensors (N, H, W, C)."""
         return self.optimizable_images
 
+    @override
     def get_light_name_list(self) -> list[str] | None:
-        """Return list of layer names in the EXR."""
         return self.light_name_list
 
+    @override
     def get_non_optimized_lights(self) -> torch.Tensor | None:
-        """Return non-optimized residual layer tensor if computed."""
         return self.non_optimized_lights_tensor

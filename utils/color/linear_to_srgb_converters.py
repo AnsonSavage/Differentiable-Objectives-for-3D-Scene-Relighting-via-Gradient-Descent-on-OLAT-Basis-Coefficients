@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import override
 
 import torch
 
@@ -47,6 +48,7 @@ class LinearRec709TosRGB(ABC):
 class SimpleGammaCurve(LinearRec709TosRGB):
     """Linear Rec. 709 to sRGB converter using standard IEC 61966-2-1 piecewise gamma."""
 
+    @override
     def convert(self, linear_rgb: torch.Tensor) -> torch.Tensor:
         """Convert linear Rec. 709 RGB to sRGB using standard piecewise gamma.
 
@@ -83,6 +85,7 @@ class LinearRec709ToAgXBase(LinearRec709TosRGB):
         """
         self.look = look
 
+    @override
     def convert(self, linear_rgb: torch.Tensor) -> torch.Tensor:
         """Convert linear Rec. 709 RGB to sRGB using AgX tonemapping.
 
@@ -111,6 +114,7 @@ class LinearRec709ToAgXBase(LinearRec709TosRGB):
         srgb = agx_base.permute(0, 3, 1, 2)
         return srgb.squeeze(0) if squeeze_back else srgb
 
+    @override
     def settings_info(self) -> dict:
         """Return serialized converter description including active look.
 

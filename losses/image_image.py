@@ -4,6 +4,7 @@ Note:
     All color space conversions (e.g., linear to sRGB) must be handled before passing tensors.
 """
 from abc import ABC, abstractmethod
+from typing import Any, override
 
 import torch
 import torchvision.transforms.functional as F
@@ -85,6 +86,7 @@ class ImageImageLoss(BaseLoss, ABC):
                 img = resize_then_crop(img, target_height=self.comparison_height, target_width=self.comparison_width)
         return img
 
+    @override
     def get_prompt_info(self) -> dict:
         """Get prompt and configuration information for logging.
 
@@ -98,6 +100,7 @@ class ImageImageLoss(BaseLoss, ABC):
             "reference_image_path": self.image_path,
         }
 
+    @override
     def forward(self, image) -> torch.Tensor:
         """Compute image-to-image loss between input image and reference.
 
@@ -118,7 +121,7 @@ class ImageImageLoss(BaseLoss, ABC):
 
     @abstractmethod
     def _loss_implementation(self, incoming_image: torch.Tensor) -> torch.Tensor:
-        """Subclass implementation of the specific distance metric.
+        """Subclass implementation of the specific distance metric between the incoming_image and the reference image.
 
         Args:
             incoming_image: Preprocessed incoming image tensor.
@@ -131,16 +134,16 @@ class ImageImageLoss(BaseLoss, ABC):
 class MSELossWithReferenceImage(ImageImageLoss):
     """Mean Squared Error (MSE) loss with reference image target."""
 
+    @override
     def _loss_implementation(self, incoming_image: torch.Tensor) -> torch.Tensor:
-        """Calculate MSE loss between input and reference image."""
         return nn.functional.mse_loss(incoming_image, self.processed_target_image)
 
 
 class L1LossWithReferenceImage(ImageImageLoss):
     """L1 Loss (Mean Absolute Error) with reference image target."""
 
+    @override
     def _loss_implementation(self, incoming_image: torch.Tensor) -> torch.Tensor:
-        """Calculate L1 loss between input and reference image."""
         return nn.functional.l1_loss(incoming_image, self.processed_target_image)
 
 
@@ -166,6 +169,7 @@ class SSIMLoss(ImageImageLoss):
         from pytorch_msssim import SSIM
         self.ssim_metric = SSIM(data_range=1.0, size_average=False, channel=3)
 
+    @override
     def _loss_implementation(self, incoming_image: torch.Tensor) -> torch.Tensor:
         target = self.processed_target_image
         if incoming_image.dim() == 3:
@@ -199,8 +203,8 @@ class LPIPSLoss(ImageImageLoss):
         from lpips import LPIPS
         self.lpips = LPIPS(net=backbone).to(device)
 
+    @override
     def _loss_implementation(self, incoming_image: torch.Tensor) -> torch.Tensor:
-        """Calculate LPIPS perceptual distance."""
         target = self.processed_target_image
         if incoming_image.dim() == 3:
             incoming_image = incoming_image.unsqueeze(0)
@@ -244,11 +248,12 @@ class ImageImageCLIPLoss(ImageImageLoss):
             )
         self.single_image_comparison_mode = self.processed_target_image_features.shape[0] == 1
 
+    @override
     def _loss_implementation(self, incoming_image: torch.Tensor) -> torch.Tensor:
-        """Calculate cosine distance between CLIP feature embeddings."""
         image_features = self.clip_model.encode_image(incoming_image)
         return compute_cosine_distance(self.processed_target_image_features, image_features, is_static_embedding_prenormalized=True)
 
+    @override
     def preprocess(self, img: torch.Tensor | Image.Image) -> torch.Tensor:
         """Apply base preprocessing followed by CLIP preprocessing."""
         original = super().preprocess(img)
@@ -327,7 +332,7 @@ class VGGStyleTransferLoss(ImageImageLoss):
         device: str = "cuda",
         backbone: str = "vgg16",
     ):
-        """Initialize VGG style transfer loss.
+        """Initialize VGG style transfer loss. Loss computed as described by Gatys et al., 2015.
 
         Args:
             reference_image: Reference style image.
@@ -357,8 +362,8 @@ class VGGStyleTransferLoss(ImageImageLoss):
                 self._compute_gram_matrix(feature_matrix) for feature_matrix in style_image_activation_feature_matrices
             ]
 
+    @override
     def _loss_implementation(self, incoming_image: torch.Tensor) -> torch.Tensor:
-        """Calculate style transfer loss based on Gram matrix MSE."""
         activations = self.model(incoming_image)
         generated_image_style_activations = [activations[i] for i in self.requested_indices]
         generated_image_feature_matrices = [
@@ -471,8 +476,8 @@ class ImageEmbeddingSimilarityLoss(ImageImageLoss):
             fine_tune=checkpoint_path,
         )
 
+    @override
     def _loss_implementation(self, incoming_image: torch.Tensor) -> torch.Tensor:
-        """Compute embedding similarity loss against reference embedding."""
         incoming_embedding = self.image_embedder.encode_image(incoming_image)  # type: ignore
         return self._compute_embedding_similarity_loss(
             static_embedding=self.processed_target_embedding,

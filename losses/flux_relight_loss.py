@@ -1,6 +1,7 @@
 """FLUX-based generative relighting loss and caching utilities."""
 import os
 from datetime import datetime
+from typing import Any, override
 
 import matplotlib.pyplot as plt
 import torch
@@ -294,25 +295,14 @@ class FluxLoss(BaseLoss):
         if self._pending_save_dir is None:
             self._pending_save_dir = run_dir
 
+    @override
     def forward(self, input_image: torch.Tensor) -> torch.Tensor:
-        """Compute image comparison loss against FLUX relighted reference.
-
-        Args:
-            input_image: Rendered image tensor to evaluate.
-
-        Returns:
-            Scalar loss tensor.
-        """
         self._ensure_initialized()
         assert self.image_comparison_criterion is not None
         return self.image_comparison_criterion(input_image)
 
+    @override
     def get_prompt_info(self) -> dict[str, Any]:
-        """Get prompt and configuration information for logging.
-
-        Returns:
-            Dictionary containing target text prompt and generation seed.
-        """
         return {
             "target_text": self.target_text,
             "flux_seed": self.images_cache.relighter.seed,

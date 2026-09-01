@@ -1,7 +1,7 @@
 """CLIP-style loss functions for image relighting with text guidance. Classes are compatible with CLIP-style models that return images and text in a shared embedding space."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, override
 
 import torch
 
@@ -33,26 +33,15 @@ class CLIPCosineSimilarity(BaseLoss):
             text_features = model.encode_text(tokens)
             self.text_features = text_features / text_features.norm(dim=1, keepdim=True)
 
+    @override
     def forward(self, image) -> torch.Tensor:
-        """Compute cosine distance (1 - cosine similarity) between image and text.
-
-        Args:
-            image: PIL Image or torch.Tensor of shape [C, H, W] or [N, C, H, W].
-
-        Returns:
-            Cosine distance loss scalar tensor.
-        """
         image = preprocess_image_input(image, preprocess=self.preprocess, device=self.device)
         image_features = self.model.encode_image(image)
 
         return compute_cosine_distance(self.text_features, image_features)
 
+    @override
     def get_prompt_info(self) -> dict[str, str]:
-        """Get prompt and configuration information for logging.
-
-        Returns:
-            Dictionary containing the CLIP text prompt.
-        """
         return {"clip_text_prompt": self.text}
 
 
@@ -112,15 +101,8 @@ class CLIPDirectionalCosineSimilarity(BaseLoss):
             self.text_direction = text_features_target - text_features_initial
             self.text_direction = self.text_direction / self.text_direction.norm(dim=1, keepdim=True)
 
+    @override
     def forward(self, image) -> torch.Tensor:
-        """Compute directional cosine distance loss.
-
-        Args:
-            image: PIL Image or torch.Tensor of shape [C, H, W] or [N, C, H, W].
-
-        Returns:
-            Loss value based on directional cosine distance (1 - cosine_similarity) between the initial to target image and text direction vectors.
-        """
         image_features = self._get_image_features(image, normalize=self.always_prenormalize_vectors)
         image_direction = image_features - self.initial_image_features
         image_direction = image_direction / image_direction.norm(dim=1, keepdim=True)
@@ -147,12 +129,8 @@ class CLIPDirectionalCosineSimilarity(BaseLoss):
 
         return image_features
 
+    @override
     def get_prompt_info(self) -> dict[str, str]:
-        """Get prompt and configuration information for logging.
-
-        Returns:
-            Dictionary containing initial and target text prompts and settings.
-        """
         info = {
             "clip_initial_text_prompt": self.initial_text,
             "clip_target_text_prompt": self.target_text,

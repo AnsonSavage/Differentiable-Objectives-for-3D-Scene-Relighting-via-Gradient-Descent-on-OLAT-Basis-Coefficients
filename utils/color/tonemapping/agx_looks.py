@@ -1,5 +1,6 @@
 """AgX creative look transformations (e.g. Punchy)."""
 from abc import ABC, abstractmethod
+from typing import override
 
 import torch
 
@@ -47,13 +48,6 @@ class AgXPunchyLook(AgXLook):
         self.punchy_saturation = punchy_saturation
         self.preserve_range = preserve_range
 
+    @override
     def apply(self, agx_base: torch.Tensor) -> torch.Tensor:
-        """Apply the AgX punchy look to the input tensor.
-
-        Args:
-            agx_base: Tensor of shape (..., 3), values in [0, 1].
-
-        Returns:
-            Contrast- and saturation-boosted tensor in [0, 1].
-        """
         return applyLookPunchyTorch(agx_base, self.punchy_gamma, self.punchy_saturation, self.preserve_range)
