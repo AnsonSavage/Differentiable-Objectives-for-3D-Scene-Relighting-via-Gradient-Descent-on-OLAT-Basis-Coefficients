@@ -5,10 +5,10 @@ This repository contains the source code for the 2026 Eurographics Short Paper, 
 
 * Read the short paper [here](https://diglib.eg.org/handle/10.2312/egs20261021).
 * Read the entire thesis (which contains additional results and experiments) [here](https://arks.lib.byu.edu/ark:/34234/q2f2b88884).
-* Watch the demo video [on YouTube](https://www.youtube.com/watch?v=px7gxgCySMQ):
+* Watch the demo video <a href="https://www.youtube.com/watch?v=px7gxgCySMQ" target="_blank" rel="noopener noreferrer">on YouTube</a>:
 
 <div style="text-align: center;">
-  <a href="https://www.youtube.com/watch?v=px7gxgCySMQ">
+  <a href="https://www.youtube.com/watch?v=px7gxgCySMQ" target="_blank" rel="noopener noreferrer">
     <img src="readme_images/video_thumbnail.jpg" alt="Watch the Demo Video" width="600">
   </a>
 </div>
