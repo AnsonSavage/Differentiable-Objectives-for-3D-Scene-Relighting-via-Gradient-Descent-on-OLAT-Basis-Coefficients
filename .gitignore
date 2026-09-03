@@ -1,0 +1,8 @@
+*.jpg
+*.jpeg
+*.png
+examples/EXAMPLE_OLATS/
+__pycache__/
+MODEL_WEIGHTS/
+OPTIMIZATION_RUNS/
+utils/external_utilities/gallery/*.json
