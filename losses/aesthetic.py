@@ -1,6 +1,7 @@
 """Aesthetic-based losses for image lighting optimization."""
 import os
 from abc import abstractmethod
+from typing import override
 from urllib.request import urlretrieve
 
 import clip
@@ -105,15 +106,8 @@ class LAIONAestheticScorer(BaseAestheticScorer):
             raise TypeError(f"Expected PIL Image or torch Tensor, got {type(image)}")
         return image
 
+    @override
     def score(self, image) -> torch.Tensor:
-        """Calculate the normalized aesthetic score of an image.
-
-        Args:
-            image: PIL Image or torch.Tensor to score.
-
-        Returns:
-            Predicted aesthetic score scaled to [0, 1]. (Note that the score is not gauranteed to be in [0, 1] for all inputs, but is typically in that range for natural images.)
-        """
         image = self._preprocess_image(image)
         image_features = self.model.encode_image(image)
         image_features = image_features / image_features.norm(dim=1, keepdim=True)
@@ -138,12 +132,8 @@ class BaseAestheticLoss(BaseLoss):
         super().__init__()
         self.scorer = scorer
 
+    @override
     def get_prompt_info(self) -> dict:
-        """Get prompt and configuration information for logging.
-
-        Returns:
-            Dictionary containing aesthetic scorer metadata.
-        """
         return {
             "aesthetic_scorer_type": type(self.scorer).__name__
         }
@@ -162,24 +152,13 @@ class AestheticLossWithTarget(BaseAestheticLoss):
         super().__init__(scorer)
         self.target_score = target_score
 
+    @override
     def forward(self, image) -> torch.Tensor:
-        """Calculate absolute difference between predicted and target scores.
-
-        Args:
-            image: Image tensor or PIL image.
-
-        Returns:
-            Absolute error loss scalar tensor.
-        """
         predicted_score = self.scorer.score(image)
         return torch.abs(self.target_score - predicted_score)
 
+    @override
     def get_prompt_info(self) -> dict:
-        """Get prompt and configuration information for logging.
-
-        Returns:
-            Dictionary containing target score metadata.
-        """
         info = super().get_prompt_info()
         info.update({
             "aesthetic_target_score": float(self.target_score),
@@ -190,24 +169,13 @@ class AestheticLossWithTarget(BaseAestheticLoss):
 class AestheticLossMaximize(BaseAestheticLoss):
     """Loss maximizing aesthetic score (by minimizing negative aesthetic score)."""
 
+    @override
     def forward(self, image) -> torch.Tensor:
-        """Calculate negative aesthetic score.
-
-        Args:
-            image: Image tensor or PIL image.
-
-        Returns:
-            Negative predicted aesthetic score.
-        """
         predicted_score = self.scorer.score(image)
         return -predicted_score
 
+    @override
     def get_prompt_info(self) -> dict:
-        """Get prompt and configuration information for logging.
-
-        Returns:
-            Dictionary indicating maximization mode.
-        """
         info = super().get_prompt_info()
         info.update({
             "aesthetic_maximize": True,

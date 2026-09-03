@@ -7,6 +7,7 @@ These losses are discussed in section 5.2.1 of:
 
 
 import os
+from typing import override
 
 import torch
 import torch.nn.functional as F
@@ -16,7 +17,7 @@ from losses.base import BaseLoss
 
 
 class DiffusionConfusionLoss(BaseLoss):
-    """Loss measuring noise prediction error of a diffusion UNet on rendered images."""
+    """Loss measuring noise prediction error (MSE) of a diffusion UNet on the current image."""
 
     def __init__(self, device: str, cache_dir: str | None = None):
         """Initialize DiffusionConfusionLoss with Stable Diffusion 2.1.
@@ -35,15 +36,8 @@ class DiffusionConfusionLoss(BaseLoss):
         num_timesteps = 50
         self.pipe.scheduler.set_timesteps(num_timesteps)
 
+    @override
     def forward(self, input_image: torch.Tensor) -> torch.Tensor:
-        """Compute MSE loss between added noise and UNet-predicted noise.
-
-        Args:
-            input_image: Image tensor of shape [N, C, H, W] in [0, 1].
-
-        Returns:
-            Scalar noise prediction error loss.
-        """
         latent = self.pipe.vae.encode(input_image).latent_dist.sample() * self.pipe.vae.config.scaling_factor
         timestep = self.pipe.scheduler.timesteps[10]
         noise = torch.randn_like(latent)
@@ -56,12 +50,8 @@ class DiffusionConfusionLoss(BaseLoss):
         loss = F.mse_loss(predicted_noise, noise)
         return loss
 
+    @override
     def get_prompt_info(self) -> dict[str, str]:
-        """Get prompt and configuration information for logging.
-
-        Returns:
-            Dictionary describing the loss.
-        """
         return {"loss_description": "Diffusion Confusion Loss using Stable Diffusion 2.1"}
 
 
@@ -126,23 +116,12 @@ class VAEReconstructionLoss(BaseLoss):
         loss = F.mse_loss(reconstructed_image, input_image)
         return loss
 
+    @override
     def forward(self, input_image: torch.Tensor) -> torch.Tensor:
-        """Evaluate VAE reconstruction loss on input image.
-
-        Args:
-            input_image: Input image tensor.
-
-        Returns:
-            Scalar reconstruction loss.
-        """
         return self.get_reconstruction_loss(input_image)
 
+    @override
     def get_prompt_info(self) -> dict[str, str]:
-        """Get prompt and configuration information for logging.
-
-        Returns:
-            Dictionary describing the loss.
-        """
         return {"loss_description": "VAE Reconstruction Loss using Stable Diffusion 2.1 VAE"}
 
 
@@ -175,23 +154,12 @@ class AverageImageLuminanceLoss(BaseLoss):
         linear_image[~linear_mask] = ((image[~linear_mask] + 0.055) / 1.055) ** 2.4
         return linear_image
 
+    @override
     def forward(self, image: torch.Tensor) -> torch.Tensor:
-        """Compute MSE between mean linear luminance and goal luminance.
-
-        Args:
-            image: sRGB image tensor [C, H, W] or [N, C, H, W].
-
-        Returns:
-            Luminance difference penalty scalar tensor.
-        """
         linear_image = self.srgb_to_linear(image)
         luminance = torch.sum(linear_image * self.image_luminance_converter_tensor, dim=0)
         return F.mse_loss(luminance.mean(), self.goal_average_luminance)
 
+    @override
     def get_prompt_info(self) -> dict[str, str]:
-        """Get prompt and configuration information for logging.
-
-        Returns:
-            Dictionary describing the goal luminance.
-        """
         return {"loss_description": f"Image Darkness Loss with goal average luminance {self.goal_average_luminance}"}

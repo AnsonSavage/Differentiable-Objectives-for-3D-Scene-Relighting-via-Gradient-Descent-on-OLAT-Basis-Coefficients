@@ -1,6 +1,7 @@
 """Composite loss for combining multiple loss functions with weights."""
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, cast
+from typing import Any, cast, override
 
 from losses.base import BaseLoss, UpdatableLoss
 
@@ -51,27 +52,16 @@ class CompositeLoss(UpdatableLoss):
 
             self.components.append(Component(weight_fn=weight_fn, current_weight=current, loss_fn=loss_fn))
 
+    @override
     def forward(self, image):
-        """Calculate weighted sum of component losses.
-
-        Args:
-            image: Image tensor to evaluate.
-
-        Returns:
-            Weighted sum of individual loss values.
-        """
         total_loss = 0.0
         for comp in self.components:
             loss = comp.loss_fn(image)
             total_loss += comp.current_weight * loss
         return total_loss
 
+    @override
     def get_prompt_info(self) -> dict[str, Any]:
-        """Get prompt and configuration information from all component losses.
-
-        Returns:
-            Dictionary containing list of metadata dicts for all loss components.
-        """
         component_infos = []
         for comp in self.components:
             loss_fn = comp.loss_fn
@@ -88,14 +78,8 @@ class CompositeLoss(UpdatableLoss):
 
         return {"composite_losses": component_infos}
 
+    @override
     def update_parameters(self, current_step: int, total_steps: int, **kwargs):
-        """Update component weights and delegate to updatable child losses.
-
-        Args:
-            current_step: Current optimization step.
-            total_steps: Total number of optimization steps.
-            **kwargs: Additional keyword arguments passed to child losses.
-        """
         for comp in self.components:
             comp.current_weight = float(comp.weight_fn(current_step, total_steps))
 
