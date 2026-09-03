@@ -182,8 +182,12 @@ def create_clip_model_and_tokenizer(
     loading_time_start = time.time()
     print(f"Loading base CLIP model {model_name}...")
 
-    model, _, preprocess = open_clip.create_model_and_transforms(model_name, pretrained=pretrained)
-    tokenizer = open_clip.get_tokenizer(model_name)
+    model, _, preprocess = open_clip.create_model_and_transforms(
+        model_name,
+        pretrained=pretrained,
+        cache_dir=MODEL_WEIGHTS_DIR,
+    )
+    tokenizer = open_clip.get_tokenizer(model_name, cache_dir=MODEL_WEIGHTS_DIR)
 
     if fine_tune:
         weights_path = get_model_weights_path(fine_tune)
