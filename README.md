@@ -1,8 +1,25 @@
 # Differentiable Objectives for 3D Scene Relighting via Gradient Descent on OLAT Basis Coefficients
-This repository contains the source code for the 2026 Eurographics Short Paper, _Differentiable Objectives for 3D Scene Relighting via Gradient Descent on OLAT Basis Coefficients_.
+![Readme Teaser Image](readme_images/figure_1.png)
+
+This repository contains the source code for the 2026 Eurographics Short Paper, _Differentiable Objectives for 3D Scene Relighting via Gradient Descent on OLAT Basis Coefficients_, which describes a method for relighting 3D scenes after rendering by using objectives such as CLIP similarity or NST and adjusting lights to match those objectives.
 
 * Read the short paper [here](https://diglib.eg.org/handle/10.2312/egs20261021).
 * Read the entire thesis (which contains additional results and experiments) [here](https://arks.lib.byu.edu/ark:/34234/q2f2b88884).
+* Watch the demo video [on YouTube](https://www.youtube.com/watch?v=px7gxgCySMQ):
+
+<div style="text-align: center;">
+  <a href="https://www.youtube.com/watch?v=px7gxgCySMQ">
+    <img src="readme_images/video_thumbnail.jpg" alt="Watch the Demo Video" width="600">
+  </a>
+</div>
+
+## Getting Started
+This code was tested with **Python 3.12** and the modules in `requirements.txt`. Install the required dependencies by running:
+```bash
+pip install -r requirements.txt
+```
+
+Check out the example notebooks in the `examples/` directory to get started. 
 
 ## Repository Structure
 - `examples/` - Example notebooks demoing the use of the optimization framework with various losses
@@ -16,10 +33,10 @@ This repository contains the source code for the 2026 Eurographics Short Paper, 
 
 ## Scene Directory Structure
 
-The framework supports OLATs stored in two structures:
+You can test this framework with your own 3D scenes. The framework supports OLATs stored in two structures, but could easily be extended to support other formats.
 
 ### 1. Per-Light EXR Directory (used by `OLATDirScene`)
-Per-light scenes must contain an `optimizable_lights/` subdirectory with individual `.exr` passes for each light to be optimized. Any non-optimizable background or base light pass (e.g., `base_lighting.exr`) must be placed directly in the root scene directory, **not** inside `optimizable_lights/`.
+Per-light scenes must contain an `optimizable_lights/` subdirectory with individual `.exr` passes for each light to be optimized. Any non-optimizable background or base light pass (e.g., `base_lighting.exr`) must be placed directly in the root scene directory, not inside `optimizable_lights/`.
 
 ```text
 my_scene/
@@ -32,4 +49,4 @@ my_scene/
 ```
 
 ### 2. Multi-Layer EXR File (used by `MultiLayerEXRScene`)
-Multi-layer EXR scenes store all light passes within a single `.exr` file, where per-light channels are grouped by a designated light keyword found in a substring of the channel name (default `'LGT'`).
+Multi-layer EXR scenes store all light passes within a single `.exr` file, where per-light channel names each contain the substring `'LGT'`.
