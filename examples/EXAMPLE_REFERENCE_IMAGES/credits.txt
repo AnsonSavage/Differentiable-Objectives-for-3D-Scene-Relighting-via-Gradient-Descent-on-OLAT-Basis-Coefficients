@@ -1,0 +1,19 @@
+Image Credits & Attribution
+===========================
+
+All images in this directory are free to use under creative/open licenses (Unsplash License / CC0) and serve as sample target reference images for image-to-image relighting objectives (e.g. CLIP cosine similarity, VGG style loss, SSIM, and LPIPS).
+
+* golden_hour_01.jpg
+  - URL: https://unsplash.com/photos/green-leafed-plant-during-sunset-e0TyPsK0yMA
+
+* golden_hour_02.jpg
+  - URL: https://unsplash.com/photos/landscape-photography-of-brown-mountains-tMvuB9se2uQ
+
+* sunset.jpg
+  - URL: https://unsplash.com/photos/black-and-white-clouds-during-sunset-BP0RBHQZMcI
+
+* cemrecan-yurtman-rx5OLYpKViI-unsplash.jpg
+  - URL: https://unsplash.com/photos/a-person-holding-a-camera-in-their-hands-rx5OLYpKViI
+
+* jahanzeb-ahsan-_cM4CsbDhwQ-unsplash.jpg
+  - URL: https://unsplash.com/photos/silhouette-of-a-person-with-bright-light-behind-them-_cM4CsbDhwQ
