@@ -27,7 +27,7 @@ from utils.scene import MultiLayerEXRScene, OLATDirScene
 BASE_DIR = Path(__file__).resolve().parent
 LOCAL_EXAMPLE_OLATS_DIR = BASE_DIR / "EXAMPLE_OLATS"
 HF_BUCKET_ID = "AnsonSavage/DemoOLATScenes"
-PREFIX = "EXAMPLE_OLATS"
+REMOTE_PREFIX = "example_olats"
 
 
 class OlatCacheManager:
@@ -50,12 +50,22 @@ class OlatCacheManager:
         from huggingface_hub import download_bucket_files, list_bucket_tree
 
         file_pairs = []
-        items = list_bucket_tree(HF_BUCKET_ID, prefix=PREFIX)
+        items = list_bucket_tree(HF_BUCKET_ID, prefix=REMOTE_PREFIX)
         for item in items:
             if item.type == "file":
                 remote_path = item.path
-                local_path = BASE_DIR / remote_path
+                # Map remote prefix (e.g. 'example_olats/...') to uppercase LOCAL_EXAMPLE_OLATS_DIR
+                if remote_path.startswith(REMOTE_PREFIX + "/") or remote_path.startswith(REMOTE_PREFIX + "\\"):
+                    rel_subpath = remote_path[len(REMOTE_PREFIX) + 1:]
+                else:
+                    rel_subpath = remote_path
+                local_path = LOCAL_EXAMPLE_OLATS_DIR / rel_subpath
                 file_pairs.append((remote_path, local_path))
+
+        if not file_pairs:
+            raise FileNotFoundError(
+                f"No files found in Hugging Face bucket '{HF_BUCKET_ID}' under prefix '{REMOTE_PREFIX}'."
+            )
 
         download_bucket_files(HF_BUCKET_ID, files=file_pairs)
 
@@ -70,9 +80,15 @@ class OlatCacheManager:
             return
         try:
             OlatCacheManager._download_example_olats_from_hf()
-        except (ImportError, FileNotFoundError):
+        except Exception as e:
             raise FileNotFoundError(
-                "Could not find example_olats locally and failed to download them from Hugging Face."
+                f"Could not find example OLATs locally in {LOCAL_EXAMPLE_OLATS_DIR} "
+                f"and failed to download them from Hugging Face: {e}"
+            ) from e
+
+        if not OlatCacheManager._has_any_files(LOCAL_EXAMPLE_OLATS_DIR):
+            raise FileNotFoundError(
+                f"Download completed but no files were found in {LOCAL_EXAMPLE_OLATS_DIR}."
             )
 
 
