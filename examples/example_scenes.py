@@ -122,6 +122,29 @@ def _scene_multilayer_file(scene_name: str, configuration: str, filename: str) -
     return str(LOCAL_EXAMPLE_OLATS_DIR / "multilayer" / scene_name / configuration / filename)
 
 
+LOCAL_EXAMPLE_REFERENCE_IMAGES_DIR = BASE_DIR / "EXAMPLE_REFERENCE_IMAGES"
+
+
+def get_example_reference_image_path(filename: str) -> str:
+    """Get absolute path to an example reference image.
+
+    Args:
+        filename: Name of the reference image file in EXAMPLE_REFERENCE_IMAGES.
+
+    Returns:
+        String path to the reference image file.
+
+    Raises:
+        FileNotFoundError: If the reference image file does not exist.
+    """
+    image_path = LOCAL_EXAMPLE_REFERENCE_IMAGES_DIR / filename
+    if not image_path.exists():
+        raise FileNotFoundError(
+            f"Example reference image '{filename}' not found at: {image_path}"
+        )
+    return str(image_path)
+
+
 class SpringScene(MultiLayerEXRScene):
     """Spring scene: A girl and dog running in the mountains (multilayer EXR)."""
 
