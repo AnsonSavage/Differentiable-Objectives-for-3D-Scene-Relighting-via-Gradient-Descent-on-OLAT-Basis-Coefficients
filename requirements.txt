@@ -15,9 +15,12 @@ pytorch-msssim==1.0.0
 OpenEXR==3.4.13
 pillow==11.3.0
 
-# For use with the web server and ipykernel (Jupyter Notebook):
+# For gallery web server:
 Flask==3.1.0
+
+# For Jupyter notebooks:
 ipykernel==6.31.0
+ipywidgets==8.1.9
 
 
 # Uncomment these for flux_relight_example.ipynb:
