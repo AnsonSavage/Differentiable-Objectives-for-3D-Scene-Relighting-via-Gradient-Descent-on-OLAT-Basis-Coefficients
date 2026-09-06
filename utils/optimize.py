@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Callable
 
@@ -356,6 +357,17 @@ def optimize_with_criterion(
     if folder_manager.run_dir:
         final_params = param_strategy.get_parameters_for_saving()
         torch.save(final_params.detach().cpu(), os.path.join(folder_manager.run_dir, "final_multipliers.pt"))
+        final_multipliers_rgb = param_strategy.get_multipliers().detach().cpu()
+        with open(os.path.join(folder_manager.run_dir, "final_multipliers_rgb.json"), "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "multipliers_rgb": final_multipliers_rgb.tolist(),
+                    "n_results": int(final_multipliers_rgb.shape[0]),
+                    "num_lights": int(final_multipliers_rgb.shape[1]),
+                },
+                f,
+                indent=2,
+            )
 
     # Finalize resource usage tracking (only extra info beyond settings.json)
     usage_tracker.finish()
