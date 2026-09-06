@@ -37,6 +37,13 @@ A Blender add-on (`olat_render_addon.py`) designed to automate rendering One-Lig
    - Specify the destination path in **Output Directory**.
 4. **Render**:
    - Click **Render OLAT**. The add-on will switch the render format to OpenEXR and sequentially render each pass.
+5. **Re-apply Learned Multipliers in Blender**:
+   - In your optimization run directory, use `final_multipliers_rgb.json` (written by `optimize_with_criterion`).
+   - In Blender's **OLAT Render** panel set:
+     - **Metadata JSON** to the rendered scene's `olat_metadata.json`
+     - **Multipliers File** to `final_multipliers_rgb.json` (or `.pt` if PyTorch is available in Blender Python)
+     - **Result Index** for multi-result optimization runs (`n_results > 1`)
+   - Click **Apply Learned Multipliers** to multiply the learned RGB values onto mapped light colors (including emissive mesh lights and world background nodes).
 
 ---
 

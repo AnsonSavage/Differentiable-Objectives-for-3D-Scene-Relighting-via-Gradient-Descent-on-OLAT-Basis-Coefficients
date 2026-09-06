@@ -8,7 +8,7 @@ import bpy
 bl_info = {
     "name": "OLAT Render Tools",
     "author": "GitHub Copilot",
-    "version": (1, 2),
+    "version": (1, 3),
     "blender": (3, 0, 0),
     "location": "Properties > Render > OLAT Render",
     "description": "Tools for rendering One-Light-At-A-Time (OLAT) datasets",
@@ -90,6 +90,105 @@ def sanitize_filename(name: str) -> str:
         Sanitized string with illegal characters replaced by underscores.
     """
     return re.sub(r'[<>:"/\\|?*\s]', "_", name)
+
+
+def _is_number(value) -> bool:
+    return isinstance(value, (int, float))
+
+
+def _load_multipliers_data(path: str):
+    """Load multipliers from supported file formats."""
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".json":
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    if ext == ".pt":
+        try:
+            import torch
+        except Exception as exc:
+            raise ValueError("Cannot read .pt multipliers without PyTorch in Blender's Python environment") from exc
+        return torch.load(path, map_location="cpu")
+    raise ValueError(f"Unsupported multipliers file extension: {ext}")
+
+
+def _coerce_multipliers_rgb(data, result_index: int) -> list[tuple[float, float, float]]:
+    """Normalize multipliers into a per-light RGB multiplier list."""
+    if hasattr(data, "tolist"):
+        data = data.tolist()
+
+    if isinstance(data, dict):
+        if "multipliers_rgb" in data:
+            data = data["multipliers_rgb"]
+        else:
+            raise ValueError("Multipliers JSON must contain 'multipliers_rgb'")
+
+    if not isinstance(data, list) or len(data) == 0:
+        raise ValueError("Multipliers data must be a non-empty list")
+
+    first = data[0]
+    if _is_number(first):
+        return [(float(v), float(v), float(v)) for v in data]
+
+    if isinstance(first, list) and len(first) == 3 and all(_is_number(v) for v in first):
+        return [(float(v[0]), float(v[1]), float(v[2])) for v in data]
+
+    if isinstance(first, list):
+        if result_index < 0 or result_index >= len(data):
+            raise ValueError(f"Result index {result_index} is out of bounds for {len(data)} result(s)")
+        selected = data[result_index]
+        if not isinstance(selected, list) or len(selected) == 0:
+            raise ValueError("Selected multipliers result is empty")
+        selected_first = selected[0]
+        if _is_number(selected_first):
+            return [(float(v), float(v), float(v)) for v in selected]
+        if isinstance(selected_first, list) and len(selected_first) == 3 and all(_is_number(v) for v in selected_first):
+            return [(float(v[0]), float(v[1]), float(v[2])) for v in selected]
+
+    raise ValueError("Could not interpret multipliers format; expected [L], [L,3], [R,L], or [R,L,3]")
+
+
+def _multiply_rgba_input(socket, multiplier: tuple[float, float, float]) -> bool:
+    """Multiply an unlinked RGBA socket's RGB channels by multiplier."""
+    if socket is None or socket.is_linked:
+        return False
+    value = socket.default_value
+    if len(value) < 3:
+        return False
+    value[0] *= multiplier[0]
+    value[1] *= multiplier[1]
+    value[2] *= multiplier[2]
+    socket.default_value = value
+    return True
+
+
+def _apply_multiplier_to_mesh_emission(mesh_obj: bpy.types.Object, multiplier: tuple[float, float, float]) -> int:
+    """Apply RGB multiplier to mesh emissive material node colors."""
+    changed_nodes = 0
+    for slot in mesh_obj.material_slots:
+        mat = slot.material
+        if not mat or not mat.use_nodes:
+            continue
+        for node in mat.node_tree.nodes:
+            if node.type == "EMISSION":
+                if _multiply_rgba_input(node.inputs.get("Color"), multiplier):
+                    changed_nodes += 1
+            elif node.type == "BSDF_PRINCIPLED":
+                color_socket = node.inputs.get("Emission Color") or node.inputs.get("Emission")
+                if _multiply_rgba_input(color_socket, multiplier):
+                    changed_nodes += 1
+    return changed_nodes
+
+
+def _apply_multiplier_to_world(world: bpy.types.World, multiplier: tuple[float, float, float]) -> int:
+    """Apply RGB multiplier to world background color nodes."""
+    if not world.use_nodes:
+        return 0
+    changed_nodes = 0
+    for node in world.node_tree.nodes:
+        if node.type == "BACKGROUND":
+            if _multiply_rgba_input(node.inputs.get("Color"), multiplier):
+                changed_nodes += 1
+    return changed_nodes
 
 
 class OLAT_OT_DetectLights(bpy.types.Operator):
@@ -411,6 +510,94 @@ class OLAT_OT_Render(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class OLAT_OT_ApplyLearnedMultipliers(bpy.types.Operator):
+    """Apply learned light multipliers back onto Blender lights and emissive mesh lights."""
+
+    bl_idname = "olat.apply_learned_multipliers"
+    bl_label = "Apply Learned Multipliers"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        """Load metadata and learned multipliers, then apply to corresponding light colors."""
+        scene = context.scene
+        metadata_path = bpy.path.abspath(scene.olat_metadata_path)
+        multipliers_path = bpy.path.abspath(scene.olat_multipliers_path)
+
+        if not metadata_path or not os.path.isfile(metadata_path):
+            self.report({"ERROR"}, "Valid olat_metadata.json path is required")
+            return {"CANCELLED"}
+        if not multipliers_path or not os.path.isfile(multipliers_path):
+            self.report({"ERROR"}, "Valid multipliers file path is required")
+            return {"CANCELLED"}
+
+        try:
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+            light_mapping = metadata.get("light_mapping", {})
+            if not isinstance(light_mapping, dict) or not light_mapping:
+                raise ValueError("Metadata file is missing a non-empty 'light_mapping' dictionary")
+
+            multipliers_data = _load_multipliers_data(multipliers_path)
+            multipliers_rgb = _coerce_multipliers_rgb(multipliers_data, scene.olat_multipliers_result_index)
+        except Exception as exc:
+            self.report({"ERROR"}, f"Failed to load metadata/multipliers: {exc}")
+            return {"CANCELLED"}
+
+        ordered_files = sorted(light_mapping.keys())
+        if len(multipliers_rgb) != len(ordered_files):
+            self.report(
+                {"ERROR"},
+                f"Mismatch: {len(multipliers_rgb)} multipliers for {len(ordered_files)} optimizable lights",
+            )
+            return {"CANCELLED"}
+
+        applied_light_count = 0
+        applied_node_count = 0
+        missing_names = []
+
+        for idx, filename in enumerate(ordered_files):
+            light_name = light_mapping[filename]
+            multiplier = multipliers_rgb[idx]
+
+            obj = scene.objects.get(light_name)
+            if obj is not None:
+                if obj.type == "LIGHT":
+                    color = obj.data.color
+                    obj.data.color = (
+                        color[0] * multiplier[0],
+                        color[1] * multiplier[1],
+                        color[2] * multiplier[2],
+                    )
+                    applied_light_count += 1
+                    continue
+                if obj.type == "MESH":
+                    changed = _apply_multiplier_to_mesh_emission(obj, multiplier)
+                    if changed > 0:
+                        applied_node_count += changed
+                        applied_light_count += 1
+                    continue
+
+            world = bpy.data.worlds.get(light_name)
+            if world is not None:
+                changed = _apply_multiplier_to_world(world, multiplier)
+                if changed > 0:
+                    applied_node_count += changed
+                    applied_light_count += 1
+                continue
+
+            missing_names.append(light_name)
+
+        message = f"Applied multipliers to {applied_light_count} mapped light(s)"
+        if applied_node_count > 0:
+            message += f" ({applied_node_count} emissive node color input(s) updated)"
+        if missing_names:
+            message += f"; {len(missing_names)} mapping target(s) not found"
+            print("Missing mapped lights/worlds:", missing_names)
+
+        self.report({"INFO"}, message)
+        return {"FINISHED"}
+
+
 def update_collection_enabled(self, context) -> None:
     """Propagate enabled state to child objects and sub-collections."""
     val = self.olat_enabled
@@ -505,6 +692,10 @@ class OLAT_PT_Panel(bpy.types.Panel):
         scene = context.scene
 
         layout.prop(scene, "olat_output_dir", text="Output Directory")
+        layout.prop(scene, "olat_metadata_path", text="Metadata JSON")
+        layout.prop(scene, "olat_multipliers_path", text="Multipliers File")
+        layout.prop(scene, "olat_multipliers_result_index", text="Result Index")
+        layout.operator("olat.apply_learned_multipliers", icon="FILE_REFRESH")
 
         row = layout.row()
         row.operator("olat.detect_lights", text="Refresh / Detect Lights")
@@ -551,6 +742,7 @@ def register():
     bpy.utils.register_class(OLAT_OT_ClearLights)
     bpy.utils.register_class(OLAT_OT_CreateDomeLights)
     bpy.utils.register_class(OLAT_OT_Render)
+    bpy.utils.register_class(OLAT_OT_ApplyLearnedMultipliers)
     bpy.utils.register_class(OLAT_PT_Panel)
 
     bpy.types.Scene.olat_output_dir = bpy.props.StringProperty(
@@ -566,6 +758,27 @@ def register():
         default=2,
         min=1,
         max=4,
+    )
+
+    bpy.types.Scene.olat_metadata_path = bpy.props.StringProperty(
+        name="OLAT Metadata Path",
+        description="Path to olat_metadata.json produced during OLAT rendering",
+        default="//examples/EXAMPLE_OLATS/olat_metadata.json",
+        subtype="FILE_PATH",
+    )
+
+    bpy.types.Scene.olat_multipliers_path = bpy.props.StringProperty(
+        name="Learned Multipliers Path",
+        description="Path to learned multipliers file (.json or .pt)",
+        default="",
+        subtype="FILE_PATH",
+    )
+
+    bpy.types.Scene.olat_multipliers_result_index = bpy.props.IntProperty(
+        name="Multipliers Result Index",
+        description="Which result to apply when multipliers file stores multiple solutions",
+        default=0,
+        min=0,
     )
 
     bpy.types.Object.olat_optimizable = bpy.props.BoolProperty(
@@ -626,10 +839,14 @@ def unregister():
     bpy.utils.unregister_class(OLAT_OT_ClearLights)
     bpy.utils.unregister_class(OLAT_OT_CreateDomeLights)
     bpy.utils.unregister_class(OLAT_OT_Render)
+    bpy.utils.unregister_class(OLAT_OT_ApplyLearnedMultipliers)
     bpy.utils.unregister_class(OLAT_PT_Panel)
 
     del bpy.types.Scene.olat_output_dir
     del bpy.types.Scene.olat_dome_subdiv_level
+    del bpy.types.Scene.olat_metadata_path
+    del bpy.types.Scene.olat_multipliers_path
+    del bpy.types.Scene.olat_multipliers_result_index
 
     del bpy.types.Object.olat_optimizable
     del bpy.types.Object.olat_enabled
