@@ -14,10 +14,18 @@ This repository contains the source code for the 2026 Eurographics Short Paper, 
 </div>
 
 ## Getting Started
-This code was tested with **Python 3.12** and the modules in `requirements.txt`. Install the required dependencies by running:
+This code is tested to be compatible with **Python 3.12** and **Python 3.13** and the modules in `requirements.txt` (note: `git` must be installed for the `CLIP` dependency). Install the required dependencies by running:
 ```bash
 pip install -r requirements.txt
 ```
+
+> [!NOTE]
+> **Windows users:**
+> - **CUDA support:** On Windows, `pip install -r requirements.txt` installs the CPU-only build of `torch` from PyPI. If you have an NVIDIA GPU, install CUDA-enabled `torch==2.8.0` and `torchvision==0.23.0` inside your active virtual environment first (available for CUDA 12.6, 12.8, and 12.9 — e.g., `pip install torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128`, or see [PyTorch previous versions](https://pytorch.org/get-started/previous-versions/)) before running `pip install -r requirements.txt`.
+> - **Long Paths (`MAX_PATH`):** `pip install` and saving results can hit Windows' 260-character path limit (`OSError: [Errno 2]` or `WinError 206`) due to the long repo name. To fix this, enable Windows Long Paths by opening **PowerShell as Administrator** (Start Menu → search `PowerShell` → **Run as administrator**), running the command below, and then restarting your terminal/IDE ([more info](https://pip.pypa.io/warnings/enable-long-paths)):
+>   ```powershell
+>   New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+>   ```
 
 Check out the example notebooks in the `examples/` directory to get started. 
 

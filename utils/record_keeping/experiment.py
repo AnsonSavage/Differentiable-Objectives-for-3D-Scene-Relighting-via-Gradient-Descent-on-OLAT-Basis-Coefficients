@@ -60,6 +60,14 @@ class FolderManager:
             except FileExistsError as e:
                 last_err = e
                 continue
+            except OSError as e:
+                if getattr(e, "winerror", None) == 206:
+                    raise OSError(
+                        f"Run folder path exceeds Windows MAX_PATH (260 chars): {run_path}\n"
+                        "To fix this, enable Windows Long Paths in an Administrator PowerShell "
+                        "(see README.md) and restart your terminal/IDE."
+                    ) from e
+                raise
             self.timestamp = timestamp
             self.run_dir = run_path
             return run_path
