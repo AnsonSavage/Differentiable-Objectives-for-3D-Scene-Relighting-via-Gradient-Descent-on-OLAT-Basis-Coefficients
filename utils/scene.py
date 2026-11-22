@@ -158,10 +158,10 @@ class Scene(ABC):
             display_tensor(alpha_mask.permute(2, 0, 1))
 
     def get_image_resolution(self) -> tuple[int, int]:
-        """Get spatial resolution (width, height) of scene images.
+        """Get spatial resolution (height, width) of scene images.
 
         Returns:
-            Tuple of (width, height).
+            Tuple of (height, width).
 
         Raises:
             ValueError: If scene has no optimizable images.
@@ -169,7 +169,7 @@ class Scene(ABC):
         images = self.get_optimizable_images()
         if images.shape[0] < 1:
             raise ValueError("No optimizable images found in scene")
-        return images.shape[-2], images.shape[-3]
+        return images.shape[-3], images.shape[-2]
 
 
 class OLATDirScene(Scene):

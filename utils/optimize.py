@@ -62,6 +62,7 @@ def optimize_with_criterion(
     run_name_suffix: str | None = None,
     starting_multiplier_mean: float | tuple[float, float, float] | None = None,
     save_loss_plot_each_iteration: bool = False,
+    verbose_parameter_strategy_output: bool = False,
 ) -> tuple[torch.Tensor, list[float]]:
     """Train image multipliers to optimize an objective criterion on OLAT light passes.
 
@@ -99,6 +100,7 @@ def optimize_with_criterion(
         starting_multiplier_mean: Mean for multiplier initialization. (single float or tuple of 3 floats). Defaults are
                       RGB=(1.0, 1.0, 1.0), HSV=(0.0, 0.0, 1.0).
         save_loss_plot_each_iteration: If True, saves intermediate loss plots every step.
+        verbose_parameter_strategy_output: If True, prints detailed updates regarding the parameter optimization strategy.
 
     Returns:
         Tuple of (final_multipliers_tensor, loss_history_list).
@@ -173,9 +175,9 @@ def optimize_with_criterion(
     
     # Create appropriate parameter strategy
     if parameters_stored_as_hsv:
-        param_strategy: ParameterStrategy = HSVParameterStrategy(hsv_callback=hsv_callback, verbose=True)
+        param_strategy: ParameterStrategy = HSVParameterStrategy(hsv_callback=hsv_callback, verbose=verbose_parameter_strategy_output)
     else:
-        param_strategy: ParameterStrategy = RGBParameterStrategy(verbose=True)
+        param_strategy: ParameterStrategy = RGBParameterStrategy(verbose=verbose_parameter_strategy_output)
     
     # Initialize parameters via strategy
     param_strategy.initialize_parameters(
